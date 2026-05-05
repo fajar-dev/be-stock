@@ -16,8 +16,7 @@ export class ConversionSerializer {
             } : null,
             remark: `1 ${conversion.unitBasic?.name || ''} = ${Number(conversion.value)} ${conversion.unitConversion?.name || ''}`,
             isActive: conversion.isActive,
-            createdAt: conversion.createdAt,
-
+            createdAt: conversion.createdAt
         }
     }
 

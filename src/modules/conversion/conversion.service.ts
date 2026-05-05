@@ -1,9 +1,13 @@
 import { IConversionRepository } from './conversion.interface'
 import { CreateConversionValidator } from './validators/conversion.validators'
-import { NotFoundException } from '../../core/exceptions/base'
+import { BadRequestException, NotFoundException } from '../../core/exceptions/base'
+import { IUnitRepository } from '../unit/unit.interface'
 
 export class ConversionService {
-    constructor(private readonly repository: IConversionRepository) { }
+    constructor(
+        private readonly repository: IConversionRepository,
+        private readonly unitRepository: IUnitRepository
+    ) { }
 
     async getAll(page: number, limit: number, query: string, isActive: boolean) {
         const [data, total] = await this.repository.findAll(page, limit, query, isActive)
@@ -17,6 +21,12 @@ export class ConversionService {
     }
 
     async create(data: CreateConversionValidator) {
+        const unitBasic = await this.unitRepository.findById(data.unitBasicId)
+        if (!unitBasic) throw new BadRequestException(`Unit basic not found`)
+
+        const unitConversion = await this.unitRepository.findById(data.unitConversionId)
+        if (!unitConversion) throw new BadRequestException(`Unit conversion not found`)
+
         return this.repository.create(data)
     }
 }

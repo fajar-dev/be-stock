@@ -277,8 +277,8 @@ Throw from service layer. The global error handler in `index.ts` catches all `Ba
 | `TooManyValidatorsException` | 429    |
 
 ```ts
-throw new NotFoundException(`Stock with id '${id}' not found`);
-throw new ConflictException(`SKU '${sku}' already exists`);
+throw new NotFoundException(`Stock not found`);
+throw new ConflictException(`SKU already exists`);
 ```
 
 ---
