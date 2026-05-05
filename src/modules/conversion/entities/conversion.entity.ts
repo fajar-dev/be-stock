@@ -5,7 +5,8 @@ import {
     JoinColumn,
     Entity,
     CreateDateColumn,
-    type Relation
+    type Relation,
+    UpdateDateColumn
 } from 'typeorm'
 import { Unit } from '../../unit/entities/unit.entity'
 
@@ -42,4 +43,7 @@ export class Conversion {
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date
+
+    @UpdateDateColumn({ name: 'updated_at' })
+    updatedAt!: Date
 }

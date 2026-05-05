@@ -1,21 +1,37 @@
-import { Stock } from '../entities/stock.entity'
+import { Stock } from '../entities/stock.entity';
+import { MinioHelper } from '../../../core/helpers/minio';
 
 export class StockSerializer {
-    static single(stock: Stock) {
+    static async single(stock: Stock) {
+        let photoUrl = stock.photo;
+        if (photoUrl && !photoUrl.startsWith('http')) {
+            photoUrl = await MinioHelper.getPresignedUrl(photoUrl);
+        }
+
         return {
             id: stock.id,
+            code: stock.code,
             name: stock.name,
-            sku: stock.sku,
-            quantity: stock.quantity,
-            unit: stock.unit,
-            price: Number(stock.price),
-            description: stock.description ?? null,
+            managementModel: stock.managementModel,
+            itemType: stock.itemType,
+            toolType: stock.toolType,
+            category: stock.category,
+            photo: photoUrl,
+            description: stock.description,
             createdAt: stock.createdAt,
-            updatedAt: stock.updatedAt,
-        }
+            unit: stock.unit ? {
+                id: stock.unit.id,
+                name: stock.unit.name,
+            } : null,
+            conversions: stock.stockConversions?.map(sc => ({
+                id: sc.conversion?.id,
+                name: sc.conversion?.name,
+                remark: `1 ${sc.conversion?.unitBasic?.name || ''} = ${Number(sc.conversion?.value)} ${sc.conversion?.unitConversion?.name || ''}`,
+            })) || []
+        };
     }
 
-    static collection(stocks: Stock[]) {
-        return stocks.map(stock => this.single(stock))
+    static async collection(stocks: Stock[]) {
+        return Promise.all(stocks.map(s => this.single(s)));
     }
 }

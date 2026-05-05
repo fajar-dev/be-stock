@@ -5,6 +5,7 @@ import { BaseException } from './core/exceptions/base'
 import { ApiResponse } from './core/helpers/response'
 import { config } from './config/config'
 import api from './routes/api'
+import { initializeMinio } from './config/minio'
 
 const app = new Hono()
 
@@ -14,12 +15,15 @@ app.use('*', cors({
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 }))
 
+
 // Database Connection
 try {
     await AppDataSource.initialize()
     console.log("Database connected successfully")
+    await initializeMinio()
+    console.log("Minio initialized successfully")
 } catch (err) {
-    console.error("Database connection error", err)
+    console.error("Initialization error", err)
     process.exit(1)
 }
 

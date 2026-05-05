@@ -1,10 +1,10 @@
-import { DataSource } from 'typeorm'
-import { StockRepository } from './stock.repository'
-import { StockService } from './stock.service'
-import { StockController } from './stock.controller'
+import { DataSource } from 'typeorm';
+import { StockController } from './stock.controller';
+import { StockRepository } from './stock.repository';
+import { StockService } from './stock.service';
 
 export function createStockController(dataSource: DataSource): StockController {
-    const repository = new StockRepository(dataSource)
-    const service = new StockService(repository)
-    return new StockController(service)
+    const repository = new StockRepository(dataSource);
+    const service = new StockService(repository);
+    return new StockController(service);
 }

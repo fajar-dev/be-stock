@@ -4,6 +4,7 @@ import {
     Entity,
     OneToMany,
     PrimaryGeneratedColumn,
+    UpdateDateColumn,
 } from 'typeorm'
 import { Conversion } from '../../conversion/entities/conversion.entity'
 
@@ -23,6 +24,9 @@ export class Unit {
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date
+
+    @UpdateDateColumn({ name: 'updated_at' })
+    updatedAt!: Date;
 
     @OneToMany(() => Conversion, (conversion) => conversion.unitBasic, { cascade: true })
     conversionsBasic?: Conversion[]

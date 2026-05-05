@@ -1,15 +1,18 @@
-import { z } from 'zod'
+import { z } from 'zod';
+import { ItemType, ToolType, Category, ManagementModel } from '../stock.enum';
 
 export const CreateStockSchema = z.object({
-    name: z.string().min(1).max(150),
-    sku: z.string().min(1).max(100),
-    quantity: z.number().int().min(0).default(0),
-    unit: z.string().min(1).max(50).default('pcs'),
-    price: z.number().min(0).default(0),
-    description: z.string().nullable().optional(),
-})
+    code: z.string().min(1, 'Kode Barang wajib diisi'),
+    name: z.string().min(1, 'Nama Barang wajib diisi'),
+    managementModel: z.enum(ManagementModel, { error: 'Invalid item management model' }),
+    unitId: z.number({ error: 'Unit is required' }).positive('Unit is required'),
+    itemType: z.enum(ItemType, { error: 'Invalid item type' }),
+    toolType: z.enum(ToolType, { error: 'Invalid tool type' }),
+    category: z.enum(Category, { error: 'Invalid category' }),
+    photo: z.string().optional(),
+    description: z.string().optional(),
+    conversionUnit: z.array(z.number()).optional(),
+});
 
-export const UpdateStockSchema = CreateStockSchema.partial()
 
-export type CreateStockValidator = z.infer<typeof CreateStockSchema>
-export type UpdateStockValidator = z.infer<typeof UpdateStockSchema>
+export type CreateStockValidator = z.infer<typeof CreateStockSchema>;

@@ -2,6 +2,7 @@ import "reflect-metadata"
 import { DataSource } from "typeorm"
 import { config } from "./config"
 import { Stock } from "../modules/stock/entities/stock.entity"
+import { StockConversion } from "../modules/stock/entities/stock-conversion.entity"
 import { Unit } from "../modules/unit/entities/unit.entity"
 import { Conversion } from "../modules/conversion/entities/conversion.entity"
 
@@ -17,7 +18,7 @@ export const AppDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [Stock, Unit, Conversion],
+    entities: [Stock, StockConversion, Unit, Conversion],
     migrations: [],
     subscribers: [],
     connectorPackage: "mysql2",
