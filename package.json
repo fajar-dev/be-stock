@@ -1,5 +1,7 @@
 {
-  "name": "be",
+  "name": "be-stock-module-service",
+  "version": "1.0.0",
+  "description": "be-stock-module-service",
   "scripts": {
     "dev": "bun run --hot src/index.ts"
   },
