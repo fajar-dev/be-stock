@@ -2,9 +2,14 @@ import { DataSource } from 'typeorm';
 import { StockController } from './stock.controller';
 import { StockRepository } from './stock.repository';
 import { StockService } from './stock.service';
+import { UnitRepository } from '../unit/unit.repository';
+import { ConversionRepository } from '../conversion/conversion.repository';
 
 export function createStockController(dataSource: DataSource): StockController {
     const repository = new StockRepository(dataSource);
-    const service = new StockService(repository);
+    const unitRepository = new UnitRepository(dataSource);
+    const conversionRepository = new ConversionRepository(dataSource);
+    
+    const service = new StockService(repository, unitRepository, conversionRepository);
     return new StockController(service);
 }
