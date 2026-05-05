@@ -2,8 +2,10 @@ import {
     Column,
     CreateDateColumn,
     Entity,
+    OneToMany,
     PrimaryGeneratedColumn,
 } from 'typeorm'
+import { Conversion } from '../../conversion/entities/conversion.entity'
 
 @Entity('units')
 export class Unit {
@@ -21,5 +23,11 @@ export class Unit {
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date
+
+    @OneToMany(() => Conversion, (conversion) => conversion.unitBasic, { cascade: true })
+    conversionsBasic?: Conversion[]
+
+    @OneToMany(() => Conversion, (conversion) => conversion.unitConversion, { cascade: true })
+    conversionsConversion?: Conversion[]
 
 }

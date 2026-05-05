@@ -25,7 +25,7 @@ src/
 │   │   ├── response.ts           # ApiResponse formatter
 │   │   └── validator.ts          # validationHook for zValidator
 │   └── validators/
-│       └── pagination.schema.ts  # Shared PaginationSchema + PaginationDto
+│       └── pagination.schema.ts  # Shared PaginationSchema + PaginationValidator
 ├── routes/
 │   └── api.ts                    # All route declarations (mounted at /api)
 └── modules/
@@ -50,89 +50,95 @@ src/
 Every domain module follows this exact layering:
 
 ### 1. Entity (`entities/<name>.entity.ts`)
-TypeORM entity class. Always include `uuid` PK, `createdAt`, `updatedAt`.
+
+TypeORM entity class. Always include `id` (PK), `createdAt`, `updatedAt`.
 
 ```ts
-@Entity('table_name')
+@Entity("table_name")
 export class Stock {
-    @PrimaryGeneratedColumn('uuid')
-    id!: string
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Column({ length: 150 })
-    name!: string
+  @Column({ length: 150 })
+  name!: string;
 
-    @CreateDateColumn({ name: 'created_at' })
-    createdAt!: Date
+  @CreateDateColumn({ name: "created_at" })
+  createdAt!: Date;
 
-    @UpdateDateColumn({ name: 'updated_at' })
-    updatedAt!: Date
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt!: Date;
 }
 ```
 
 ### 2. Validators (`validators/<name>.validators.ts`)
-Zod schemas + inferred DTO types. `UpdateSchema` is always `.partial()` of `CreateSchema`.
+
+Zod schemas + inferred Validator types. `UpdateSchema` is always `.partial()` of `CreateSchema`.
 
 ```ts
 export const CreateStockSchema = z.object({ ... })
 export const UpdateStockSchema = CreateStockSchema.partial()
 export const PaginationSchema = z.object({ page: z.coerce.number()..., limit: z.coerce.number()... })
 
-export type CreateStockDto = z.infer<typeof CreateStockSchema>
-export type UpdateStockDto = z.infer<typeof UpdateStockSchema>
-export type PaginationDto   = z.infer<typeof PaginationSchema>
+export type CreateStockValidator = z.infer<typeof CreateStockSchema>
+export type UpdateStockValidator = z.infer<typeof UpdateStockSchema>
+export type PaginationValidator   = z.infer<typeof PaginationSchema>
 ```
 
 ### 3. Interface (`<name>.interface.ts`)
+
 Repository contract. Service depends on this interface, not the concrete class.
 
 ```ts
 export interface IStockRepository {
-    findAll(page: number, limit: number): Promise<[Stock[], number]>
-    findById(id: string): Promise<Stock | null>
-    create(data: CreateStockDto): Promise<Stock>
-    update(id: string, data: UpdateStockDto): Promise<Stock>
-    delete(id: string): Promise<void>
+  findAll(page: number, limit: number): Promise<[Stock[], number]>;
+  findById(id: string): Promise<Stock | null>;
+  create(data: CreateStockValidator): Promise<Stock>;
+  update(id: string, data: UpdateStockValidator): Promise<Stock>;
+  delete(id: string): Promise<void>;
 }
 ```
 
 ### 4. Repository (`<name>.repository.ts`)
+
 Implements the interface. Receives `DataSource` in constructor, no business logic here.
 
 ```ts
 export class StockRepository implements IStockRepository {
-    private readonly repo: Repository<Stock>
+  private readonly repo: Repository<Stock>;
 
-    constructor(dataSource: DataSource) {
-        this.repo = dataSource.getRepository(Stock)
-    }
+  constructor(dataSource: DataSource) {
+    this.repo = dataSource.getRepository(Stock);
+  }
 
-    findAll(page: number, limit: number): Promise<[Stock[], number]> {
-        return this.repo.findAndCount({
-            order: { createdAt: 'DESC' },
-            skip: (page - 1) * limit,
-            take: limit,
-        })
-    }
-    // ...
+  findAll(page: number, limit: number): Promise<[Stock[], number]> {
+    return this.repo.findAndCount({
+      order: { createdAt: "DESC" },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+  }
+  // ...
 }
 ```
 
 ### 5. Service (`<name>.service.ts`)
+
 Business logic. Depends on the interface (not concrete repo). Throws exceptions here.
 
 ```ts
 export class StockService {
-    constructor(private readonly repository: IStockRepository) {}
+  constructor(private readonly repository: IStockRepository) {}
 
-    async getById(id: string) {
-        const stock = await this.repository.findById(id)
-        if (!stock) throw new NotFoundException(`Stock with id '${id}' not found`)
-        return stock
-    }
+  async getById(id: string) {
+    const stock = await this.repository.findById(id);
+    if (!stock) throw new NotFoundException(`Stock with id '${id}' not found`);
+    return stock;
+  }
 }
 ```
 
 ### 6. Serializer (`serializers/<name>.serializer.ts`)
+
 Static class. Always expose `single()` and `collection()`. Controls what JSON shape the API returns. Cast types here (e.g., `Number(stock.price)`).
 
 ```ts
@@ -147,28 +153,40 @@ export class StockSerializer {
 ```
 
 ### 7. Controller (`<name>.controller.ts`)
+
 HTTP layer only. No business logic. Method names: `index`, `show`, `store`, `update`, `destroy`.
 
 ```ts
 export class StockController {
-    constructor(private readonly service: StockService) {}
+  constructor(private readonly service: StockService) {}
 
-    async index(c: Context) { /* list */ }
-    async show(c: Context)  { /* single */ }
-    async store(c: Context) { /* create */ }
-    async update(c: Context){ /* update */ }
-    async destroy(c: Context){ /* delete */ }
+  async index(c: Context) {
+    /* list */
+  }
+  async show(c: Context) {
+    /* single */
+  }
+  async store(c: Context) {
+    /* create */
+  }
+  async update(c: Context) {
+    /* update */
+  }
+  async destroy(c: Context) {
+    /* delete */
+  }
 }
 ```
 
 ### 8. Module (`<name>.module.ts`)
+
 Factory function for manual DI. Always named `create<Name>Controller`.
 
 ```ts
 export function createStockController(dataSource: DataSource): StockController {
-    const repository = new StockRepository(dataSource)
-    const service    = new StockService(repository)
-    return new StockController(service)
+  const repository = new StockRepository(dataSource);
+  const service = new StockService(repository);
+  return new StockController(service);
 }
 ```
 
@@ -179,19 +197,31 @@ export function createStockController(dataSource: DataSource): StockController {
 All routes declared here, mounted at `/api` in `index.ts`. Use `zValidator` + `validationHook` for request validation. Always wrap controller methods in arrow functions to preserve `this` context.
 
 ```ts
-routes.get('/stocks',      zValidator('query', PaginationSchema, validationHook), (c) => stockController.index(c))
-routes.get('/stocks/:id',  (c) => stockController.show(c))
-routes.post('/stocks',     zValidator('json', CreateStockSchema, validationHook), (c) => stockController.store(c))
-routes.put('/stocks/:id',  zValidator('json', UpdateStockSchema, validationHook), (c) => stockController.update(c))
-routes.delete('/stocks/:id', (c) => stockController.destroy(c))
+routes.get(
+  "/stocks",
+  zValidator("query", PaginationSchema, validationHook),
+  (c) => stockController.index(c),
+);
+routes.get("/stocks/:id", (c) => stockController.show(c));
+routes.post(
+  "/stocks",
+  zValidator("json", CreateStockSchema, validationHook),
+  (c) => stockController.store(c),
+);
+routes.put(
+  "/stocks/:id",
+  zValidator("json", UpdateStockSchema, validationHook),
+  (c) => stockController.update(c),
+);
+routes.delete("/stocks/:id", (c) => stockController.destroy(c));
 ```
 
 In controllers, access validated data via `c.req.valid()` — bukan `c.req.query()`/`c.req.json()`:
 
 ```ts
 // ✅ Gunakan data hasil validasi Zod
-const { page, limit } = c.req.valid('query' as never) as PaginationDto
-const dto = await c.req.json<CreateStockDto>()
+const { page, limit } = c.req.valid("query" as never) as PaginationValidator;
+const validator = await c.req.json<CreateStockValidator>();
 ```
 
 ---
@@ -202,16 +232,24 @@ Use `ApiResponse` for all responses. Never call `c.json()` directly in controlle
 
 ```ts
 // Single resource
-ApiResponse.success(c, StockSerializer.single(data), 'Message', 201)
+ApiResponse.success(c, StockSerializer.single(data), "Message", 201);
 
 // Paginated list
-ApiResponse.paginate(c, StockSerializer.collection(data), total, page, limit, 'Message')
+ApiResponse.paginate(
+  c,
+  StockSerializer.collection(data),
+  total,
+  page,
+  limit,
+  "Message",
+);
 
 // Error (handled globally — throw exceptions in service instead)
-ApiResponse.error(c, 'Message', 500, errors)
+ApiResponse.error(c, "Message", 500, errors);
 ```
 
 Response shape:
+
 ```json
 {
   "success": true,
@@ -228,19 +266,19 @@ Response shape:
 
 Throw from service layer. The global error handler in `index.ts` catches all `BaseException` subclasses.
 
-| Class | Status |
-|---|---|
-| `BadRequestException` | 400 |
-| `UnauthorizedException` | 401 |
-| `ForbiddenException` | 403 |
-| `NotFoundException` | 404 |
-| `ConflictException` | 409 |
-| `ValidatorException` | 422 |
-| `TooManyValidatorsException` | 429 |
+| Class                        | Status |
+| ---------------------------- | ------ |
+| `BadRequestException`        | 400    |
+| `UnauthorizedException`      | 401    |
+| `ForbiddenException`         | 403    |
+| `NotFoundException`          | 404    |
+| `ConflictException`          | 409    |
+| `ValidatorException`         | 422    |
+| `TooManyValidatorsException` | 429    |
 
 ```ts
-throw new NotFoundException(`Stock with id '${id}' not found`)
-throw new ConflictException(`SKU '${sku}' already exists`)
+throw new NotFoundException(`Stock with id '${id}' not found`);
+throw new ConflictException(`SKU '${sku}' already exists`);
 ```
 
 ---
@@ -249,7 +287,7 @@ throw new ConflictException(`SKU '${sku}' already exists`)
 
 1. Create folder `src/modules/<name>/`
 2. `entities/<name>.entity.ts` — TypeORM entity
-3. `validators/<name>.validators.ts` — Zod schemas + DTO types
+3. `validators/<name>.validators.ts` — Zod schemas + Validator types
 4. `<name>.interface.ts` — repository interface
 5. `<name>.repository.ts` — implements interface
 6. `<name>.service.ts` — business logic, uses interface

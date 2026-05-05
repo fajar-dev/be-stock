@@ -1,8 +1,7 @@
 import { DataSource, Like, Repository } from 'typeorm'
 import { Unit } from './entities/unit.entity'
 import { IUnitRepository } from './unit.interface'
-import { CreateUnitValidator, UpdateUnitValidator } from './validators/unit.validators'
-import { NotFoundException } from '../../core/exceptions/base'
+import { CreateUnitValidator } from './validators/unit.validators'
 
 export class UnitRepository implements IUnitRepository {
     private readonly repo: Repository<Unit>

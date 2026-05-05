@@ -5,7 +5,4 @@ export const CreateUnitSchema = z.object({
     isActive: z.boolean().default(true),
 })
 
-export const UpdateUnitSchema = CreateUnitSchema.partial()
-
 export type CreateUnitValidator = z.infer<typeof CreateUnitSchema>
-export type UpdateUnitValidator = z.infer<typeof UpdateUnitSchema>

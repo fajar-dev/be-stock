@@ -25,7 +25,7 @@ src/
 │   │   ├── response.ts           # ApiResponse formatter
 │   │   └── validator.ts          # validationHook for zValidator
 │   └── validators/
-│       └── pagination.schema.ts  # Shared PaginationSchema + PaginationDto
+│       └── pagination.schema.ts  # Shared PaginationSchema + PaginationValidator
 ├── routes/
 │   └── api.ts                    # All route declarations (mounted at /api)
 └── modules/
@@ -51,13 +51,13 @@ Every domain module follows this exact layering:
 
 ### 1. Entity (`entities/<name>.entity.ts`)
 
-TypeORM entity class. Always include `uuid` PK, `createdAt`, `updatedAt`.
+TypeORM entity class. Always include `id` (PK), `createdAt`, `updatedAt`.
 
 ```ts
 @Entity("table_name")
 export class Stock {
-  @PrimaryGeneratedColumn("uuid")
-  id!: string;
+  @PrimaryGeneratedColumn()
+  id!: number;
 
   @Column({ length: 150 })
   name!: string;
@@ -72,16 +72,16 @@ export class Stock {
 
 ### 2. Validators (`validators/<name>.validators.ts`)
 
-Zod schemas + inferred DTO types. `UpdateSchema` is always `.partial()` of `CreateSchema`.
+Zod schemas + inferred Validator types. `UpdateSchema` is always `.partial()` of `CreateSchema`.
 
 ```ts
 export const CreateStockSchema = z.object({ ... })
 export const UpdateStockSchema = CreateStockSchema.partial()
 export const PaginationSchema = z.object({ page: z.coerce.number()..., limit: z.coerce.number()... })
 
-export type CreateStockDto = z.infer<typeof CreateStockSchema>
-export type UpdateStockDto = z.infer<typeof UpdateStockSchema>
-export type PaginationDto   = z.infer<typeof PaginationSchema>
+export type CreateStockValidator = z.infer<typeof CreateStockSchema>
+export type UpdateStockValidator = z.infer<typeof UpdateStockSchema>
+export type PaginationValidator   = z.infer<typeof PaginationSchema>
 ```
 
 ### 3. Interface (`<name>.interface.ts`)
@@ -92,8 +92,8 @@ Repository contract. Service depends on this interface, not the concrete class.
 export interface IStockRepository {
   findAll(page: number, limit: number): Promise<[Stock[], number]>;
   findById(id: string): Promise<Stock | null>;
-  create(data: CreateStockDto): Promise<Stock>;
-  update(id: string, data: UpdateStockDto): Promise<Stock>;
+  create(data: CreateStockValidator): Promise<Stock>;
+  update(id: string, data: UpdateStockValidator): Promise<Stock>;
   delete(id: string): Promise<void>;
 }
 ```
@@ -220,8 +220,8 @@ In controllers, access validated data via `c.req.valid()` — bukan `c.req.query
 
 ```ts
 // ✅ Gunakan data hasil validasi Zod
-const { page, limit } = c.req.valid("query" as never) as PaginationDto;
-const dto = await c.req.json<CreateStockDto>();
+const { page, limit } = c.req.valid("query" as never) as PaginationValidator;
+const validator = await c.req.json<CreateStockValidator>();
 ```
 
 ---
@@ -287,7 +287,7 @@ throw new ConflictException(`SKU '${sku}' already exists`);
 
 1. Create folder `src/modules/<name>/`
 2. `entities/<name>.entity.ts` — TypeORM entity
-3. `validators/<name>.validators.ts` — Zod schemas + DTO types
+3. `validators/<name>.validators.ts` — Zod schemas + Validator types
 4. `<name>.interface.ts` — repository interface
 5. `<name>.repository.ts` — implements interface
 6. `<name>.service.ts` — business logic, uses interface

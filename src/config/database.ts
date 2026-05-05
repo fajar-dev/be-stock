@@ -3,6 +3,7 @@ import { DataSource } from "typeorm"
 import { config } from "./config"
 import { Stock } from "../modules/stock/entities/stock.entity"
 import { Unit } from "../modules/unit/entities/unit.entity"
+import { Conversion } from "../modules/conversion/entities/conversion.entity"
 
 /**
  * TypeORM Database Configuration
@@ -16,7 +17,7 @@ export const AppDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [Stock, Unit],
+    entities: [Stock, Unit, Conversion],
     migrations: [],
     subscribers: [],
     connectorPackage: "mysql2",

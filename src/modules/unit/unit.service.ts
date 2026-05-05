@@ -1,9 +1,9 @@
-import { ConflictException, NotFoundException } from '../../core/exceptions/base'
-import { CreateUnitValidator, UpdateUnitValidator } from './validators/unit.validators'
+import { NotFoundException } from '../../core/exceptions/base'
+import { CreateUnitValidator } from './validators/unit.validators'
 import { IUnitRepository } from './unit.interface'
 
 export class UnitService {
-    constructor(private readonly repository: IUnitRepository) {}
+    constructor(private readonly repository: IUnitRepository) { }
 
     async getAll(page: number, limit: number, query: string, isActive: boolean) {
         const [data, total] = await this.repository.findAll(page, limit, query, isActive)
