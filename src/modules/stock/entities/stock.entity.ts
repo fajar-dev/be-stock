@@ -34,10 +34,10 @@ export class Stock {
     category!: Category;
 
     @Column({ length: 255, nullable: true, name: 'photo' })
-    photo?: string;
+    photo?: string | null;
 
     @Column({ type: 'text', nullable: true, name: 'description' })
-    description?: string;
+    description?: string | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date;

@@ -24,7 +24,12 @@ export class StockController {
     }
 
     async store(c: Context) {
-        const data = c.req.valid('json' as never) as CreateStockValidator;
+        const data = c.req.valid('form' as never) as CreateStockValidator;
+        
+        if (data.photo instanceof File) {
+            data.photo = await MinioHelper.uploadFromFile(data.photo, 'stocks');
+        }
+
         const stock = await this.service.create(data);
         const serializedStock = await StockSerializer.single(stock);
         return ApiResponse.success(c, serializedStock, "Stock created successfully", 201);

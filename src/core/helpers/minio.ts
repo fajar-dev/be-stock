@@ -39,6 +39,18 @@ export class MinioHelper {
     }
 
     /**
+     * Upload a File object (e.g. from multipart form) under the given folder prefix.
+     * Returns the stored object name (path in bucket).
+     */
+    static async uploadFromFile(file: File, folder: string = 'uploads'): Promise<string> {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const ext = file.name.split('.').pop() || 'bin';
+        const objectName = `${folder}/${Date.now()}-${Math.round(Math.random() * 1000)}.${ext}`;
+        await this.uploadFile(objectName, buffer, file.type);
+        return objectName;
+    }
+
+    /**
      * Delete a file from the bucket.
      * @param objectName - The name/path of the object in the bucket.
      */

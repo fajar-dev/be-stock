@@ -26,6 +26,6 @@ routes.post('/conversion', zValidator('json', CreateConversionSchema, validation
 
 routes.get('/stock', zValidator('query', PaginationSchema, validationHook), (c) => stockController.index(c))
 routes.get('/stock/:id', (c) => stockController.show(c))
-routes.post('/stock', zValidator('json', CreateStockSchema, validationHook), (c) => stockController.store(c))
+routes.post('/stock', zValidator('form', CreateStockSchema, validationHook), (c) => stockController.store(c))
 
 export default routes
