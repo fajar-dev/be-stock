@@ -21,7 +21,7 @@ export class StockSerializer {
             createdAt: stock.createdAt,
             baseConversion: stock.baseConversion ? {
                 id: stock.baseConversion.id,
-                name: stock.baseConversion.unitBasic.name,
+                name: stock.baseConversion.name,
             } : null,
             conversions: stock.stockConversions?.map(sc => ({
                 id: sc.conversion?.id,

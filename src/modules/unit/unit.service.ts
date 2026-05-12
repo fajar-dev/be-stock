@@ -27,7 +27,7 @@ export class UnitService {
             const unit = await manager.save(manager.create(Unit, validator))
 
             await manager.save(manager.create(Conversion, {
-                name: `1 ${unit.name} = 1 ${unit.name}`,
+                name: unit.name,
                 unitBasicId: unit.id,
                 unitConversionId: unit.id,
                 value: 1,

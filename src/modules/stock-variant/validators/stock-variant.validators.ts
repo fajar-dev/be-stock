@@ -5,7 +5,6 @@ export const CreateStockVariantSchema = z.object({
     code: z.string().min(1).max(50),
     name: z.string().min(1).max(150),
     description: z.string().optional().nullable(),
-    photo: z.union([z.instanceof(File), z.string()]).optional(),
     quantity: z.coerce.number().int().min(0).optional().nullable(),
 });
 
