@@ -1,4 +1,4 @@
-import { DataSource, Like, Repository } from 'typeorm'
+import { DataSource, Repository } from 'typeorm'
 import { Unit } from './entities/unit.entity'
 import { IUnitRepository } from './unit.interface'
 import { CreateUnitValidator } from './validators/unit.validators'
@@ -11,19 +11,23 @@ export class UnitRepository implements IUnitRepository {
     }
 
     findAll(page: number, limit: number, query: string, isActive: boolean): Promise<[Unit[], number]> {
-        return this.repo.findAndCount({
-            where: {
-                name: Like(`%${query}%`),
-                isActive: isActive
-            },
-            order: { createdAt: 'DESC' },
-            skip: (page - 1) * limit,
-            take: limit,
-        })
+        return this.repo.createQueryBuilder('unit')
+            .leftJoinAndSelect('unit.conversionsBasic', 'conv', 'conv.isBaseConversion = :base', { base: true })
+            .leftJoinAndSelect('conv.stocksBase', 'stock')
+            .where('unit.name LIKE :query', { query: `%${query}%` })
+            .andWhere('unit.isActive = :isActive', { isActive })
+            .orderBy('unit.createdAt', 'DESC')
+            .skip((page - 1) * limit)
+            .take(limit)
+            .getManyAndCount()
     }
 
     findById(id: number): Promise<Unit | null> {
-        return this.repo.findOneBy({ id })
+        return this.repo.createQueryBuilder('unit')
+            .leftJoinAndSelect('unit.conversionsBasic', 'conv', 'conv.isBaseConversion = :base', { base: true })
+            .leftJoinAndSelect('conv.stocksBase', 'stock')
+            .where('unit.id = :id', { id })
+            .getOne()
     }
 
     async create(data: CreateUnitValidator): Promise<Unit> {

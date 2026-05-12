@@ -11,6 +11,7 @@ import {
 } from 'typeorm'
 import { Unit } from '../../unit/entities/unit.entity'
 import type { StockConversion } from '../../stock/entities/stock-conversion.entity'
+import type { Stock } from '../../stock/entities/stock.entity'
 
 @Entity('conversions')
 export class Conversion {
@@ -54,4 +55,7 @@ export class Conversion {
 
     @OneToMany('StockConversion', (sc: StockConversion) => sc.conversion)
     stockConversions?: StockConversion[]
+
+    @OneToMany('Stock', (stock: Stock) => stock.baseConversion)
+    stocksBase?: Stock[]
 }
