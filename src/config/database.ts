@@ -5,6 +5,7 @@ import { Stock } from "../modules/stock/entities/stock.entity"
 import { StockConversion } from "../modules/stock/entities/stock-conversion.entity"
 import { Unit } from "../modules/unit/entities/unit.entity"
 import { Conversion } from "../modules/conversion/entities/conversion.entity"
+import { StockVariant } from "../modules/stock-variant/entities/stock-variant.entity"
 
 /**
  * TypeORM Database Configuration
@@ -18,7 +19,7 @@ export const AppDataSource = new DataSource({
     password: config.database.pass,
     database: config.database.name,
     synchronize: config.database.sync,
-    entities: [Stock, StockConversion, Unit, Conversion],
+    entities: [Stock, StockConversion, Unit, Conversion, StockVariant],
     migrations: [],
     subscribers: [],
     connectorPackage: "mysql2",

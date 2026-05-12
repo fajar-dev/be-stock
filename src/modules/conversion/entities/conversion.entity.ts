@@ -25,7 +25,7 @@ export class Conversion {
     @JoinColumn({ name: 'unit_basic_id' })
     unitBasic!: Relation<Unit>
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column({ type: 'float' })
     value!: number
 
     @Column({ name: 'unit_conversion_id' })
