@@ -7,11 +7,12 @@ import { PaginationValidator } from '../../core/validators/pagination.schema';
 import { MinioHelper } from '../../core/helpers/minio';
 
 export class StockController {
-    constructor(private readonly service: StockService) {}
+    constructor(private readonly service: StockService) { }
 
     async index(c: Context) {
+        const query = c.req.query('q') || ''
         const { page, limit } = c.req.valid('query' as never) as PaginationValidator;
-        const [stocks, total] = await this.service.getAll(page, limit);
+        const [stocks, total] = await this.service.getAll(page, limit, query);
         const serializedStocks = await StockSerializer.collection(stocks);
         return ApiResponse.paginate(c, serializedStocks, total, page, limit, "Stocks retrieved successfully");
     }

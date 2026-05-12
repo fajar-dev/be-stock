@@ -3,15 +3,17 @@ import { AdditionalService } from './additional.service'
 import { ApiResponse } from '../../core/helpers/response'
 
 export class AdditionalController {
-    constructor(private readonly service: AdditionalService) {}
+    constructor(private readonly service: AdditionalService) { }
 
     async conversions(c: Context) {
-        const data = await this.service.getConversions()
+        const query = c.req.query('q') || ''
+        const data = await this.service.getConversions(query)
         return ApiResponse.success(c, data, 'Conversions retrieved successfully')
     }
 
     async baseConversions(c: Context) {
-        const data = await this.service.getBaseConversions()
+        const query = c.req.query('q') || ''
+        const data = await this.service.getBaseConversions(query)
         return ApiResponse.success(c, data, 'Base conversions retrieved successfully')
     }
 }

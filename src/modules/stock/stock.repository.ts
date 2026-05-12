@@ -10,8 +10,8 @@ export class StockRepository implements IStockRepository {
         this.repo = dataSource.getRepository(Stock);
     }
 
-    findAll(page: number, limit: number): Promise<[Stock[], number]> {
-        const query = this.repo.createQueryBuilder('stock')
+    findAll(page: number, limit: number, query: string): Promise<[Stock[], number]> {
+        let queryBuilder = this.repo.createQueryBuilder('stock') 
             .leftJoinAndSelect('stock.baseConversion', 'baseConversion')
             .leftJoinAndSelect('baseConversion.unitBasic', 'baseConversionUnit')
             .leftJoinAndSelect('stock.stockConversions', 'stockConversions')
@@ -19,10 +19,11 @@ export class StockRepository implements IStockRepository {
             .leftJoinAndSelect('conversion.unitBasic', 'unitBasic')
             .leftJoinAndSelect('conversion.unitConversion', 'unitConversion')
             .orderBy('stock.createdAt', 'DESC')
+            .where("stock.name LIKE :query", { query: `%${query}%` })
             .skip((page - 1) * limit)
             .take(limit);
 
-        return query.getManyAndCount();
+        return queryBuilder.getManyAndCount();
     }
 
     findById(id: number): Promise<Stock | null> {

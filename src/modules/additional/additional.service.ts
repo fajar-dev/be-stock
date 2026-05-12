@@ -3,11 +3,11 @@ import { AdditionalRepository } from './additional.repository'
 export class AdditionalService {
     constructor(private readonly repository: AdditionalRepository) {}
 
-    getConversions() {
-        return this.repository.findConversions()
+    getConversions(query: string) {
+        return this.repository.findConversions(query)
     }
 
-    getBaseConversions() {
-        return this.repository.findBaseConversions()
+    getBaseConversions(query: string) {
+        return this.repository.findBaseConversions(query)
     }
 }

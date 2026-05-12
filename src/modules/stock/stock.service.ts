@@ -7,10 +7,10 @@ export class StockService {
     constructor(
         private readonly repository: IStockRepository,
         private readonly conversionRepository: IConversionRepository
-    ) {}
+    ) { }
 
-    async getAll(page: number, limit: number) {
-        return this.repository.findAll(page, limit);
+    async getAll(page: number, limit: number, query: string) {
+        return this.repository.findAll(page, limit, query);
     }
 
     async getById(id: number) {

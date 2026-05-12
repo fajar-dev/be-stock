@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm'
+import { DataSource, Like } from 'typeorm'
 import { Conversion } from '../conversion/entities/conversion.entity'
 
 export class AdditionalRepository {
@@ -8,18 +8,18 @@ export class AdditionalRepository {
         this.repo = dataSource.getRepository(Conversion)
     }
 
-    findConversions(): Promise<Pick<Conversion, 'id' | 'name'>[]> {
+    findConversions(query: string): Promise<Pick<Conversion, 'id' | 'name'>[]> {
         return this.repo.find({
             select: { id: true, name: true },
-            where: { isBaseConversion: false, isActive: true },
+            where: { isBaseConversion: false, isActive: true, name: Like(`%${query}%`) },
             order: { name: 'ASC' },
         })
     }
 
-    findBaseConversions(): Promise<Pick<Conversion, 'id' | 'name'>[]> {
+    findBaseConversions(query: string): Promise<Pick<Conversion, 'id' | 'name'>[]> {
         return this.repo.find({
             select: { id: true, name: true },
-            where: { isBaseConversion: true },
+            where: { isBaseConversion: true, name: Like(`%${query}%`) },
             order: { name: 'ASC' },
         })
     }
