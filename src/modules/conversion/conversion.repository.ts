@@ -12,7 +12,7 @@ export class ConversionRepository implements IConversionRepository {
 
     findAll(page: number, limit: number, query: string, isActive: boolean): Promise<[Conversion[], number]> {
         return this.repo.findAndCount({
-            relations: ['unitBasic', 'unitConversion'],
+            relations: ['unitBasic', 'unitConversion', 'stockConversions', 'stockConversions.stock'],
             order: { createdAt: 'DESC' },
             skip: (page - 1) * limit,
             take: limit,
@@ -27,7 +27,7 @@ export class ConversionRepository implements IConversionRepository {
     findById(id: number): Promise<Conversion | null> {
         return this.repo.findOne({
             where: { id, isBaseConversion: false },
-            relations: ['unitBasic', 'unitConversion']
+            relations: ['unitBasic', 'unitConversion', 'stockConversions', 'stockConversions.stock']
         })
     }
 

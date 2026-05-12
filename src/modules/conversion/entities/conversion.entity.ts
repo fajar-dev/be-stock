@@ -6,9 +6,11 @@ import {
     Entity,
     CreateDateColumn,
     type Relation,
-    UpdateDateColumn
+    UpdateDateColumn,
+    OneToMany
 } from 'typeorm'
 import { Unit } from '../../unit/entities/unit.entity'
+import type { StockConversion } from '../../stock/entities/stock-conversion.entity'
 
 @Entity('conversions')
 export class Conversion {
@@ -49,4 +51,7 @@ export class Conversion {
 
     @UpdateDateColumn({ name: 'updated_at' })
     updatedAt!: Date
+
+    @OneToMany('StockConversion', (sc: StockConversion) => sc.conversion)
+    stockConversions?: StockConversion[]
 }

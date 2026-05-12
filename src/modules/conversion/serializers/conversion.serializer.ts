@@ -16,6 +16,11 @@ export class ConversionSerializer {
             } : null,
             remark: `1 ${conversion.unitBasic?.name || ''} = ${Number(conversion.value)} ${conversion.unitConversion?.name || ''}`,
             isActive: conversion.isActive,
+            stocks: conversion.stockConversions?.map(sc => ({
+                id: sc.stock?.id,
+                code: sc.stock?.code,
+                name: sc.stock?.name,
+            })) ?? [],
             createdAt: conversion.createdAt
         }
     }
