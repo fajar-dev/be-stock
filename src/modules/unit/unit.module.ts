@@ -5,6 +5,6 @@ import { UnitController } from './unit.controller'
 
 export function createUnitController(dataSource: DataSource): UnitController {
     const repository = new UnitRepository(dataSource)
-    const service = new UnitService(repository)
+    const service = new UnitService(repository, dataSource)
     return new UnitController(service)
 }

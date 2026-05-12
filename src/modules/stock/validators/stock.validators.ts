@@ -5,7 +5,7 @@ export const CreateStockSchema = z.object({
     code: z.string().min(1),
     name: z.string().min(1),
     managementModel: z.enum(ManagementModel),
-    unitId: z.string().transform(Number),
+    baseConversionId: z.string().transform(Number),
     itemType: z.enum(ItemType),
     toolType: z.enum(ToolType),
     category: z.enum(Category),

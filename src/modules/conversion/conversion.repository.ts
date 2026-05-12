@@ -19,13 +19,21 @@ export class ConversionRepository implements IConversionRepository {
             where: {
                 name: Like(`%${query}%`),
                 isActive,
+                isBaseConversion: false
             },
         })
     }
 
     findById(id: number): Promise<Conversion | null> {
-        return this.repo.findOne({ 
-            where: { id },
+        return this.repo.findOne({
+            where: { id, isBaseConversion: false },
+            relations: ['unitBasic', 'unitConversion']
+        })
+    }
+
+    findBaseById(id: number): Promise<Conversion | null> {
+        return this.repo.findOne({
+            where: { id, isBaseConversion: true },
             relations: ['unitBasic', 'unitConversion']
         })
     }
@@ -34,5 +42,17 @@ export class ConversionRepository implements IConversionRepository {
         const conversion = this.repo.create(data)
         const saved = await this.repo.save(conversion)
         return this.findById(saved.id) as Promise<Conversion>
+    }
+
+    async createBaseConversion(unitId: number, unitName: string): Promise<Conversion> {
+        const conversion = this.repo.create({
+            name: `1 ${unitName} = 1 ${unitName}`,
+            unitBasicId: unitId,
+            unitConversionId: unitId,
+            value: 1,
+            isBaseConversion: true,
+            isActive: true,
+        })
+        return this.repo.save(conversion)
     }
 }

@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
-import { Unit } from '../../unit/entities/unit.entity';
+import { Conversion } from '../../conversion/entities/conversion.entity';
 import { StockConversion } from './stock-conversion.entity';
 import { ItemType, ToolType, Category, ManagementModel } from '../stock.enum';
 import type { StockVariant } from '../../stock-variant/entities/stock-variant.entity';
@@ -18,12 +18,12 @@ export class Stock {
     @Column({ type: 'enum', enum: ManagementModel, name: 'management_model' })
     managementModel!: ManagementModel;
 
-    @ManyToOne(() => Unit)
-    @JoinColumn({ name: 'unit_id' })
-    unit!: Unit;
+    @ManyToOne(() => Conversion)
+    @JoinColumn({ name: 'base_conversion_id' })
+    baseConversion!: Conversion;
 
-    @Column({ name: 'unit_id' })
-    unitId!: number;
+    @Column({ name: 'base_conversion_id' })
+    baseConversionId!: number;
 
     @Column({ type: 'enum', enum: ItemType, name: 'item_type' })
     itemType!: ItemType;

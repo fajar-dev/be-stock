@@ -1,4 +1,4 @@
-import { DataSource, Repository, Like } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Stock } from './entities/stock.entity';
 import { IStockRepository } from './stock.interface';
 import { CreateStockValidator } from './validators/stock.validators';
@@ -12,7 +12,8 @@ export class StockRepository implements IStockRepository {
 
     findAll(page: number, limit: number): Promise<[Stock[], number]> {
         const query = this.repo.createQueryBuilder('stock')
-            .leftJoinAndSelect('stock.unit', 'unit')
+            .leftJoinAndSelect('stock.baseConversion', 'baseConversion')
+            .leftJoinAndSelect('baseConversion.unitBasic', 'baseConversionUnit')
             .leftJoinAndSelect('stock.stockConversions', 'stockConversions')
             .leftJoinAndSelect('stockConversions.conversion', 'conversion')
             .leftJoinAndSelect('conversion.unitBasic', 'unitBasic')
@@ -28,12 +29,13 @@ export class StockRepository implements IStockRepository {
         return this.repo.findOne({ 
             where: { id }, 
             relations: [
-                'unit', 
-                'stockConversions', 
+                'baseConversion',
+                'baseConversion.unitBasic',
+                'stockConversions',
                 'stockConversions.conversion',
                 'stockConversions.conversion.unitBasic',
                 'stockConversions.conversion.unitConversion'
-            ] 
+            ]
         });
     }
 

@@ -1,13 +1,11 @@
 import { IStockRepository } from './stock.interface';
 import { CreateStockValidator } from './validators/stock.validators';
 import { NotFoundException, ConflictException, BadRequestException } from '../../core/exceptions/base';
-import { IUnitRepository } from '../unit/unit.interface';
 import { IConversionRepository } from '../conversion/conversion.interface';
 
 export class StockService {
     constructor(
         private readonly repository: IStockRepository,
-        private readonly unitRepository: IUnitRepository,
         private readonly conversionRepository: IConversionRepository
     ) {}
 
@@ -22,23 +20,16 @@ export class StockService {
     }
 
     async create(data: CreateStockValidator) {
-        // Validate code uniqueness
         const existingCode = await this.repository.findByCode(data.code);
         if (existingCode) throw new ConflictException(`Stock code already exists`);
 
-        // Validate unitId exists
-        const unitExists = await this.unitRepository.findById(data.unitId);
-        if (!unitExists) {
-            throw new BadRequestException(`Unit not found`);
-        }
+        const baseConversion = await this.conversionRepository.findBaseById(data.baseConversionId);
+        if (!baseConversion) throw new BadRequestException(`Base conversion not found`);
 
-        // Validate all conversion IDs exist if provided
         if (data.conversionUnit && data.conversionUnit.length > 0) {
             for (const conversionId of data.conversionUnit) {
-                const conversionExists = await this.conversionRepository.findById(conversionId);
-                if (!conversionExists) {
-                    throw new BadRequestException(`Conversion not found`);
-                }
+                const exists = await this.conversionRepository.findById(conversionId);
+                if (!exists) throw new BadRequestException(`Conversion not found`);
             }
         }
 

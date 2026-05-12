@@ -19,9 +19,9 @@ export class StockSerializer {
             photo: photoUrl,
             description: stock.description,
             createdAt: stock.createdAt,
-            unit: stock.unit ? {
-                id: stock.unit.id,
-                name: stock.unit.name,
+            baseConversion: stock.baseConversion ? {
+                id: stock.baseConversion.id,
+                name: stock.baseConversion.unitBasic.name,
             } : null,
             conversions: stock.stockConversions?.map(sc => ({
                 id: sc.conversion?.id,
