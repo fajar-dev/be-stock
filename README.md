@@ -4,14 +4,14 @@ REST API service untuk manajemen stok, dibangun dengan Bun + Hono + TypeORM (MyS
 
 ## Tech Stack
 
-| Layer | Library |
-|---|---|
-| Runtime | [Bun](https://bun.sh) |
-| Framework | [Hono](https://hono.dev) |
-| ORM | [TypeORM](https://typeorm.io) + MySQL |
-| Validation | [Zod](https://zod.dev) + @hono/zod-validator |
-| File Storage | [MinIO](https://min.io) |
-| Language | TypeScript |
+| Layer        | Library                                      |
+| ------------ | -------------------------------------------- |
+| Runtime      | [Bun](https://bun.sh)                        |
+| Framework    | [Hono](https://hono.dev)                     |
+| ORM          | [TypeORM](https://typeorm.io) + MySQL        |
+| Validation   | [Zod](https://zod.dev) + @hono/zod-validator |
+| File Storage | [MinIO](https://min.io)                      |
+| Language     | TypeScript                                   |
 
 ---
 
@@ -42,11 +42,11 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-| Service | URL |
-|---|---|
-| API | http://localhost:3000 |
-| MinIO Console | http://localhost:9001 |
-| Swagger Docs | http://localhost:3000/docs |
+| Service       | URL                        |
+| ------------- | -------------------------- |
+| API           | http://localhost:3000      |
+| MinIO Console | http://localhost:9001      |
+| Swagger Docs  | http://localhost:3000/docs |
 
 ---
 
@@ -110,48 +110,6 @@ src/
 Base URL: `/api`  
 Docs: `GET /docs` (Swagger UI)
 
-### Unit
-
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/api/unit` | List unit (paginasi) |
-| GET | `/api/unit/:id` | Detail unit |
-| POST | `/api/unit` | Buat unit baru (auto-create base conversion) |
-
-### Conversion
-
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/api/conversion` | List konversi (paginasi) |
-| GET | `/api/conversion/:id` | Detail konversi |
-| POST | `/api/conversion` | Buat konversi baru |
-
-### Stock
-
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/api/stock` | List stok (paginasi) |
-| GET | `/api/stock/:id` | Detail stok |
-| POST | `/api/stock` | Buat stok baru (`multipart/form-data`) |
-
-### Stock Variant
-
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/api/stock-variant` | List semua variant (paginasi) |
-| GET | `/api/stock-variant/:id` | Detail variant |
-| GET | `/api/stock/:stockId/stock-variant` | List variant per stok |
-| POST | `/api/stock-variant` | Buat variant baru |
-
-### Additional (Helper/Dropdown)
-
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/api/additional/conversion` | Semua konversi (tanpa paginasi) |
-| GET | `/api/additional/base-conversion` | Hanya base conversion |
-
----
-
 ## Response Format
 
 ```json
@@ -193,5 +151,5 @@ modules/<name>/
 Urutan penambahan module baru:
 
 1. Entity → 2. Validators → 3. Interface → 4. Repository → 5. Service → 6. Serializer → 7. Controller → 8. Module
-9. Daftarkan entity di `src/config/database.ts`
-10. Tambahkan routes di `src/routes/api.ts`
+2. Daftarkan entity di `src/config/database.ts`
+3. Tambahkan routes di `src/routes/api.ts`
