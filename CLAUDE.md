@@ -16,14 +16,16 @@
 src/
 ├── index.ts                      # App entry — CORS, DB init (awaited), global error handler, route mount
 ├── config/
-│   ├── config.ts                 # Centralized env config
-│   └── database.ts               # TypeORM DataSource setup
+│   ├── config.ts                 # Centralized env config (DB + MinIO env vars)
+│   ├── database.ts               # TypeORM DataSource setup
+│   └── minio.ts                  # MinIO client init + initializeMinio() (bucket auto-create)
 ├── core/
 │   ├── exceptions/
 │   │   └── base.ts               # BaseException + all HTTP exception classes
 │   ├── helpers/
 │   │   ├── response.ts           # ApiResponse formatter
-│   │   └── validator.ts          # validationHook for zValidator
+│   │   ├── validator.ts          # validationHook for zValidator
+│   │   └── minio.ts              # MinioHelper static class (upload, presign, delete, publicUrl)
 │   └── validators/
 │       └── pagination.schema.ts  # Shared PaginationSchema + PaginationValidator
 ├── routes/
@@ -35,8 +37,9 @@ src/
         ├── <module>.service.ts
         ├── <module>.repository.ts
         ├── <module>.interface.ts
+        ├── <module>.enum.ts      # (optional) Domain enums — only if module has fixed classifications
         ├── entities/
-        │   └── <module>.entity.ts
+        │   └── <module>.entity.ts  # Can contain multiple entity files (e.g. join-table entities)
         ├── validators/
         │   └── <module>.validators.ts
         └── serializers/
@@ -98,6 +101,24 @@ export interface IStockRepository {
 }
 ```
 
+### 2b. Enum File (`<name>.enum.ts`) — optional
+
+Only create when the module has domain-specific fixed classifications. Export all related enums from one file.
+
+```ts
+export enum ItemType {
+  PERALATAN = 'Peralatan',
+  SETUP = 'setup',
+}
+
+export enum Category {
+  ASET = 'Aset',
+  BIAYA = 'Biaya',
+}
+```
+
+---
+
 ### 4. Repository (`<name>.repository.ts`)
 
 Implements the interface. Receives `DataSource` in constructor, no business logic here.
@@ -136,6 +157,46 @@ export class StockService {
   }
 }
 ```
+
+**Cross-module dependencies**: Services may depend on repository interfaces from other modules for validation. Always use the interface, never the concrete class.
+
+```ts
+export class StockService {
+  constructor(
+    private readonly repository: IStockRepository,
+    private readonly conversionRepository: IConversionRepository, // from another module
+  ) {}
+}
+```
+
+**Transactions with auto-create side effects**: When creating one entity must atomically create another, inject `DataSource` and use `dataSource.transaction()`.
+
+```ts
+export class UnitService {
+  constructor(
+    private readonly repository: IUnitRepository,
+    private readonly dataSource: DataSource,
+  ) {}
+
+  async create(validator: CreateUnitValidator): Promise<Unit> {
+    return this.dataSource.transaction(async (manager) => {
+      const unit = await manager.save(manager.create(Unit, validator));
+      // auto-create base conversion for every new unit
+      await manager.save(manager.create(Conversion, {
+        name: unit.name,
+        unitBasicId: unit.id,
+        unitConversionId: unit.id,
+        value: 1,
+        isBaseConversion: true,
+        isActive: true,
+      }));
+      return unit;
+    });
+  }
+}
+```
+
+When a service uses transactions, update its module factory and interface accordingly to pass `DataSource`.
 
 ### 6. Serializer (`serializers/<name>.serializer.ts`)
 
@@ -216,6 +277,16 @@ routes.put(
 routes.delete("/stocks/:id", (c) => stockController.destroy(c));
 ```
 
+The `zValidator` second argument determines the data source:
+- `'query'` — query string params
+- `'json'` — request body as JSON
+- `'form'` — multipart form data (use for file uploads)
+
+```ts
+// multipart/form-data (e.g. stock creation with image upload)
+routes.post('/stock', zValidator('form', CreateStockSchema, validationHook), (c) => stockController.store(c));
+```
+
 In controllers, access validated data via `c.req.valid()` — bukan `c.req.query()`/`c.req.json()`:
 
 ```ts
@@ -283,16 +354,78 @@ throw new ConflictException(`SKU already exists`);
 
 ---
 
+## MinIO Integration
+
+MinIO is used for S3-compatible file storage. It is initialized on app startup alongside the DB.
+
+**Config** (`src/config/minio.ts`): Creates the MinIO client and exports `initializeMinio()` which auto-creates the bucket with public-read policy if it doesn't exist.
+
+**Helper** (`src/core/helpers/minio.ts`): Static `MinioHelper` class — use this in services/controllers.
+
+```ts
+// Upload a File from multipart form, returns the object name stored in bucket
+const objectName = await MinioHelper.uploadFromFile(file, 'folder-name');
+
+// Get public URL (assumes bucket policy allows public read)
+const url = MinioHelper.getPublicUrl(objectName);
+
+// Generate presigned GET URL (for private buckets)
+const url = await MinioHelper.getPresignedUrl(objectName);
+
+// Delete a file
+await MinioHelper.deleteFile(objectName);
+```
+
+**Required env vars** (all have defaults for local dev):
+| Variable | Default |
+|---|---|
+| `MINIO_ENDPOINT` | `127.0.0.1` |
+| `MINIO_PORT` | `9000` |
+| `MINIO_USE_SSL` | `false` |
+| `MINIO_ACCESS_KEY` | `minioadmin` |
+| `MINIO_SECRET_KEY` | `minioadmin` |
+| `MINIO_BUCKET_NAME` | `stock-app` |
+
+---
+
+## Lightweight Module Pattern
+
+For read-only helper modules (dropdowns, search filters) that query existing entities from other modules — not a full CRUD domain. Skip entity, interface, validators, and serializer.
+
+**Minimal structure**:
+```
+modules/additional/
+├── additional.controller.ts   # reads raw c.req.query('q')
+├── additional.service.ts
+├── additional.repository.ts   # no interface needed
+└── additional.module.ts
+```
+
+Repository uses `DataSource` directly (no interface). Service depends on concrete repository. Controller reads raw query params (`c.req.query('q')`) without Zod validation. No serializer — return data as-is or shape inline.
+
+Routes have no `zValidator` middleware:
+
+```ts
+routes.get('/additional/conversion', (c) => additionalController.conversions(c));
+routes.get('/additional/base-conversion', (c) => additionalController.baseConversions(c));
+```
+
+Use this pattern only when the module is purely a helper with no writes and no owned entities.
+
+---
+
 ## Adding a New Module — Checklist
 
 1. Create folder `src/modules/<name>/`
-2. `entities/<name>.entity.ts` — TypeORM entity
+2. `entities/<name>.entity.ts` — TypeORM entity (add more entity files here for join tables / sub-entities)
 3. `validators/<name>.validators.ts` — Zod schemas + Validator types
-4. `<name>.interface.ts` — repository interface
-5. `<name>.repository.ts` — implements interface
-6. `<name>.service.ts` — business logic, uses interface
-7. `serializers/<name>.serializer.ts` — `single()` + `collection()`
-8. `<name>.controller.ts` — HTTP handlers
-9. `<name>.module.ts` — `create<Name>Controller(dataSource)` factory
-10. Register entity in `src/config/database.ts` → `entities: [Stock, NewEntity]`
-11. Add routes to `src/routes/api.ts`
+4. `<name>.enum.ts` — (optional) Domain enums for fixed classifications
+5. `<name>.interface.ts` — repository interface
+6. `<name>.repository.ts` — implements interface
+7. `<name>.service.ts` — business logic, uses interface; inject `DataSource` if transactions needed
+8. `serializers/<name>.serializer.ts` — `single()` + `collection()`
+9. `<name>.controller.ts` — HTTP handlers
+10. `<name>.module.ts` — `create<Name>Controller(dataSource)` factory
+11. Register ALL new entities in `src/config/database.ts` → `entities: [Stock, NewEntity]`
+12. Add routes to `src/routes/api.ts`
+13. For file uploads: use `zValidator('form', ...)` instead of `'json'`

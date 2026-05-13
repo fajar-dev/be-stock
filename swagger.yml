@@ -1,0 +1,1001 @@
+openapi: 3.0.3
+info:
+  title: Stock API
+  description: |
+    API manajemen stok barang untuk Nusanet.
+
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: Unit
+    description: Satuan barang (Meter, Rol, Buah, dll). Saat unit dibuat, base conversion (1:1) otomatis terbentuk.
+  - name: Conversion
+    description: Konversi antar satuan (misal 1 Rol = 100 Meter)
+  - name: Stock
+    description: Data barang/stok. Upload foto via multipart/form-data.
+  - name: StockVariant
+    description: Varian dari sebuah stok (serial number, lot, dll)
+  - name: Additional
+    description: Endpoint helper read-only untuk kebutuhan dropdown dan pencarian
+
+paths:
+  # ─── UNIT ────────────────────────────────────────────────────────────────────
+  /unit:
+    get:
+      tags: [Unit]
+      summary: List semua unit
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Cari berdasarkan nama
+        - in: query
+          name: is_active
+          schema:
+            type: boolean
+          description: Filter berdasarkan status aktif
+      responses:
+        "200":
+          description: Berhasil mengambil data unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnitPaginatedResponse"
+              example:
+                success: true
+                statusCode: 200
+                message: Units retrieved successfully
+                data:
+                  - id: 1
+                    name: Meter
+                    isActive: true
+                    stocks: []
+                    createdAt: "2025-01-01T00:00:00.000Z"
+                meta:
+                  total: 1
+                  perPage: 10
+                  currentPage: 1
+                  lastPage: 1
+                  from: 1
+                  to: 1
+
+    post:
+      tags: [Unit]
+      summary: Buat unit baru
+      description: Membuat unit baru. Base conversion (1:1) akan otomatis terbentuk bersamaan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUnitRequest"
+            example:
+              name: Meter
+              isActive: true
+      responses:
+        "201":
+          description: Unit berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnitSuccessResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /unit/{id}:
+    get:
+      tags: [Unit]
+      summary: Detail unit
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Detail unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnitSuccessResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── CONVERSION ──────────────────────────────────────────────────────────────
+  /conversion:
+    get:
+      tags: [Conversion]
+      summary: List semua konversi
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Berhasil mengambil data konversi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversionPaginatedResponse"
+              example:
+                success: true
+                statusCode: 200
+                message: Conversions retrieved successfully
+                data:
+                  - id: 1
+                    name: Rol ke Meter
+                    isActive: true
+                    unitBasic:
+                      id: 2
+                      name: Rol
+                    value: 100
+                    unitConversion:
+                      id: 1
+                      name: Meter
+                    remark: 1 Rol = 100 Meter
+                    stocks: []
+                    createdAt: "2025-01-01T00:00:00.000Z"
+                meta:
+                  total: 1
+                  perPage: 10
+                  currentPage: 1
+                  lastPage: 1
+                  from: 1
+                  to: 1
+
+    post:
+      tags: [Conversion]
+      summary: Buat konversi baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateConversionRequest"
+            example:
+              name: Rol ke Meter
+              unitBasicId: 2
+              value: 100
+              unitConversionId: 1
+      responses:
+        "201":
+          description: Konversi berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversionSuccessResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /conversion/{id}:
+    get:
+      tags: [Conversion]
+      summary: Detail konversi
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Detail konversi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversionSuccessResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── STOCK ───────────────────────────────────────────────────────────────────
+  /stock:
+    get:
+      tags: [Stock]
+      summary: List semua stok
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Cari berdasarkan nama atau kode
+      responses:
+        "200":
+          description: Berhasil mengambil data stok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockPaginatedResponse"
+
+    post:
+      tags: [Stock]
+      summary: Buat stok baru
+      description: |
+        Membuat stok baru. Menggunakan `multipart/form-data` karena mendukung upload foto ke MinIO.
+
+        Field `conversionUnit` dikirim sebagai multiple form values dengan key yang sama, contoh:
+        `conversionUnit=1&conversionUnit=2`
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/CreateStockRequest"
+      responses:
+        "201":
+          description: Stok berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /stock/{id}:
+    get:
+      tags: [Stock]
+      summary: Detail stok
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Detail stok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockSuccessResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── STOCK VARIANT ────────────────────────────────────────────────────────────
+  /stock/{stockId}/stock-variant:
+    get:
+      tags: [StockVariant]
+      summary: List varian berdasarkan stok
+      parameters:
+        - in: path
+          name: stockId
+          required: true
+          schema:
+            type: integer
+          description: ID stok
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Berhasil mengambil varian stok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantPaginatedResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /stock-variant:
+    get:
+      tags: [StockVariant]
+      summary: List semua varian stok
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Berhasil mengambil semua varian stok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantPaginatedResponse"
+
+    post:
+      tags: [StockVariant]
+      summary: Buat varian stok baru
+      description: |
+        Field `quantity` hanya berlaku jika `managementModel` stok adalah `UNIK`.
+        Untuk model `LOT` dan `SERIAL_NUMBER`, quantity akan diset null secara otomatis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockVariantRequest"
+            example:
+              stockId: 1
+              code: VAR-001
+              name: Kabel UTP Cat6 - 1 Box
+              description: Box isi 305 meter
+              quantity: 10
+      responses:
+        "201":
+          description: Varian stok berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /stock-variant/{id}:
+    get:
+      tags: [StockVariant]
+      summary: Detail varian stok
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Detail varian stok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantSuccessResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── ADDITIONAL ──────────────────────────────────────────────────────────────
+  /additional/conversion:
+    get:
+      tags: [Additional]
+      summary: Cari konversi (non-base) untuk dropdown
+      description: Mengembalikan daftar konversi yang bukan base conversion. Cocok untuk select/autocomplete.
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Cari berdasarkan nama konversi
+      responses:
+        "200":
+          description: Daftar konversi
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdditionalListResponse"
+              example:
+                success: true
+                statusCode: 200
+                message: Conversions retrieved successfully
+                data:
+                  - id: 1
+                    name: Rol ke Meter
+                  - id: 2
+                    name: Box ke Buah
+
+  /additional/base-conversion:
+    get:
+      tags: [Additional]
+      summary: Cari base conversion untuk dropdown
+      description: Mengembalikan daftar base conversion (1:1). Digunakan saat memilih satuan dasar stok.
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Cari berdasarkan nama
+      responses:
+        "200":
+          description: Daftar base conversion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdditionalListResponse"
+              example:
+                success: true
+                statusCode: 200
+                message: Base conversions retrieved successfully
+                data:
+                  - id: 1
+                    name: Meter
+                  - id: 2
+                    name: Rol
+
+# ─── COMPONENTS ──────────────────────────────────────────────────────────────
+components:
+  parameters:
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+      description: ID resource
+
+    PageParam:
+      in: query
+      name: page
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Halaman
+
+    LimitParam:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Jumlah item per halaman (maks 100)
+
+  # ─── RESPONSES ─────────────────────────────────────────────────────────────
+  responses:
+    NotFound:
+      description: Resource tidak ditemukan
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            statusCode: 404
+            message: Resource not found
+
+    BadRequest:
+      description: Request tidak valid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            statusCode: 400
+            message: Bad request
+
+    Conflict:
+      description: Resource sudah ada (duplikat)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            success: false
+            statusCode: 409
+            message: Code already exists
+
+    ValidationError:
+      description: Validasi gagal
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ValidationErrorResponse"
+          example:
+            success: false
+            statusCode: 422
+            message: Validation failed
+            errors:
+              - field: name
+                message: String must contain at least 1 character(s)
+
+  # ─── SCHEMAS ───────────────────────────────────────────────────────────────
+  schemas:
+    # Enums
+    ItemType:
+      type: string
+      enum:
+        - Peralatan
+        - setup
+        - paket
+        - bukan stock
+      example: Peralatan
+
+    ToolType:
+      type: string
+      enum:
+        - Access Point
+        - Adaptor
+        - Aksesoris
+        - Antenna
+        - Anti Petir
+        - Asset
+        - Camera
+        - Extender
+        - FO Splicing Machine
+        - Homeplug
+        - Jasa
+        - Kabel Fiber
+        - Kabel Lan
+        - Kabel Power
+        - Lan Card
+        - Mini Pci
+        - Modem
+        - Powerline
+        - Radio
+        - Router
+        - Server
+        - Switch Hub
+        - Telepon
+        - Vpn
+        - Wifi Usb
+      example: Kabel Lan
+
+    Category:
+      type: string
+      enum:
+        - Aset
+        - Biaya
+      example: Aset
+
+    ManagementModel:
+      type: string
+      enum:
+        - UNIK
+        - LOT
+        - SERIAL_NUMBER
+      example: UNIK
+
+    # ── UNIT ───────────────────────────────────────────────────────────────────
+    UnitObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Meter
+        isActive:
+          type: boolean
+          example: true
+        stocks:
+          type: array
+          description: Stok yang menggunakan unit ini sebagai satuan dasar
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              code:
+                type: string
+              name:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00.000Z"
+
+    CreateUnitRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Meter
+        isActive:
+          type: boolean
+          default: true
+
+    UnitSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/UnitObject"
+
+    UnitPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/UnitObject"
+
+    # ── CONVERSION ─────────────────────────────────────────────────────────────
+    ConversionObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Rol ke Meter
+        isActive:
+          type: boolean
+          example: true
+        unitBasic:
+          type: object
+          nullable: true
+          description: Satuan asal (pembilang)
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        value:
+          type: number
+          example: 100
+        unitConversion:
+          type: object
+          nullable: true
+          description: Satuan tujuan (penyebut)
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        remark:
+          type: string
+          description: Keterangan human-readable (e.g. "1 Rol = 100 Meter")
+          example: 1 Rol = 100 Meter
+        stocks:
+          type: array
+          description: Stok yang menggunakan konversi ini
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              code:
+                type: string
+              name:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00.000Z"
+
+    CreateConversionRequest:
+      type: object
+      required:
+        - name
+        - unitBasicId
+        - value
+        - unitConversionId
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+          example: Rol ke Meter
+        unitBasicId:
+          type: integer
+          description: ID satuan asal
+          example: 2
+        value:
+          type: number
+          description: Nilai konversi (harus > 0)
+          example: 100
+        unitConversionId:
+          type: integer
+          description: ID satuan tujuan
+          example: 1
+
+    ConversionSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/ConversionObject"
+
+    ConversionPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ConversionObject"
+
+    # ── STOCK ──────────────────────────────────────────────────────────────────
+    StockObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: STK-001
+        name:
+          type: string
+          example: Kabel UTP Cat6
+        managementModel:
+          $ref: "#/components/schemas/ManagementModel"
+        itemType:
+          $ref: "#/components/schemas/ItemType"
+        toolType:
+          $ref: "#/components/schemas/ToolType"
+        category:
+          $ref: "#/components/schemas/Category"
+        description:
+          type: string
+          nullable: true
+          example: Kabel jaringan UTP kategori 6
+        photo:
+          type: string
+          nullable: true
+          description: URL foto dari MinIO (public URL atau presigned URL)
+          example: "http://localhost:9000/stock-app/stocks/1234567890-123.jpg"
+        baseConversion:
+          type: object
+          nullable: true
+          description: Satuan dasar stok ini
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+        conversions:
+          type: array
+          description: Daftar konversi satuan yang diasosiasikan dengan stok ini
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              remark:
+                type: string
+                example: 1 Rol = 100 Meter
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00.000Z"
+
+    CreateStockRequest:
+      type: object
+      required:
+        - code
+        - name
+        - managementModel
+        - baseConversionId
+        - itemType
+        - toolType
+        - category
+      properties:
+        code:
+          type: string
+          minLength: 1
+          example: STK-001
+        name:
+          type: string
+          minLength: 1
+          example: Kabel UTP Cat6
+        managementModel:
+          $ref: "#/components/schemas/ManagementModel"
+        baseConversionId:
+          type: string
+          description: ID base conversion (satuan dasar). Dikirim sebagai string karena form-data.
+          example: "1"
+        itemType:
+          $ref: "#/components/schemas/ItemType"
+        toolType:
+          $ref: "#/components/schemas/ToolType"
+        category:
+          $ref: "#/components/schemas/Category"
+        photo:
+          type: string
+          format: binary
+          description: File foto produk (opsional). Akan diupload ke MinIO.
+        description:
+          type: string
+          example: Kabel jaringan UTP kategori 6
+        conversionUnit:
+          type: array
+          description: ID konversi yang diasosiasikan dengan stok ini (opsional)
+          items:
+            type: integer
+          example: [1, 2]
+
+    StockSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/StockObject"
+
+    StockPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockObject"
+
+    # ── STOCK VARIANT ──────────────────────────────────────────────────────────
+    StockVariantObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: VAR-001
+        name:
+          type: string
+          example: Kabel UTP Cat6 - 1 Box
+        description:
+          type: string
+          nullable: true
+          example: Box isi 305 meter
+        quantity:
+          type: integer
+          nullable: true
+          description: Jumlah stok. Hanya terisi jika managementModel stok adalah UNIK.
+          example: 10
+        stock:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            code:
+              type: string
+            name:
+              type: string
+            managementModel:
+              $ref: "#/components/schemas/ManagementModel"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00.000Z"
+
+    CreateStockVariantRequest:
+      type: object
+      required:
+        - stockId
+        - code
+        - name
+      properties:
+        stockId:
+          type: integer
+          description: ID stok induk
+          example: 1
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: VAR-001
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+          example: Kabel UTP Cat6 - 1 Box
+        description:
+          type: string
+          nullable: true
+          example: Box isi 305 meter
+        quantity:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: Hanya relevan jika managementModel stok adalah UNIK. Untuk LOT/SERIAL_NUMBER akan diabaikan.
+          example: 10
+
+    StockVariantSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/StockVariantObject"
+
+    StockVariantPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockVariantObject"
+
+    # ── ADDITIONAL ─────────────────────────────────────────────────────────────
+    AdditionalItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Rol ke Meter
+
+    AdditionalListResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AdditionalItem"
+
+    # ── SHARED WRAPPERS ────────────────────────────────────────────────────────
+    SuccessWrapper:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        statusCode:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: Data retrieved successfully
+
+    PaginatedWrapper:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            meta:
+              type: object
+              properties:
+                total:
+                  type: integer
+                  example: 50
+                perPage:
+                  type: integer
+                  example: 10
+                currentPage:
+                  type: integer
+                  example: 1
+                lastPage:
+                  type: integer
+                  example: 5
+                from:
+                  type: integer
+                  example: 1
+                to:
+                  type: integer
+                  example: 10
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        statusCode:
+          type: integer
+          example: 404
+        message:
+          type: string
+          example: Resource not found
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        statusCode:
+          type: integer
+          example: 422
+        message:
+          type: string
+          example: Validation failed
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: name
+              message:
+                type: string
+                example: String must contain at least 1 character(s)

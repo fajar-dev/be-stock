@@ -6,6 +6,7 @@ import { ApiResponse } from './core/helpers/response'
 import { config } from './config/config'
 import api from './routes/api'
 import { initializeMinio } from './config/minio'
+import { swaggerUI } from '@hono/swagger-ui'
 
 const app = new Hono()
 
@@ -26,6 +27,15 @@ try {
     console.error("Initialization error", err)
     process.exit(1)
 }
+
+// Swagger UI
+app.get('/docs', swaggerUI({ url: '/swagger.yml' }))
+app.get('/swagger.yml', async (c) => {
+    const file = Bun.file('./swagger.yml')
+    return new Response(file, {
+        headers: { 'Content-Type': 'application/yaml' },
+    })
+})
 
 // Application Routes
 app.route('/api', api)

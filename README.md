@@ -9,6 +9,7 @@ REST API service untuk manajemen stok, dibangun dengan Bun + Hono + TypeORM (MyS
 - **ORM**: TypeORM + MySQL
 - **Validation**: Zod + @hono/zod-validator
 - **Language**: TypeScript
+- **File Storage**: MinIO
 
 ## Pattern
 
