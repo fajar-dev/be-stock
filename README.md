@@ -4,78 +4,155 @@ REST API service untuk manajemen stok, dibangun dengan Bun + Hono + TypeORM (MyS
 
 ## Tech Stack
 
-- **Runtime**: Bun
-- **Framework**: Hono
-- **ORM**: TypeORM + MySQL
-- **Validation**: Zod + @hono/zod-validator
-- **Language**: TypeScript
-- **File Storage**: MinIO
+| Layer | Library |
+|---|---|
+| Runtime | [Bun](https://bun.sh) |
+| Framework | [Hono](https://hono.dev) |
+| ORM | [TypeORM](https://typeorm.io) + MySQL |
+| Validation | [Zod](https://zod.dev) + @hono/zod-validator |
+| File Storage | [MinIO](https://min.io) |
+| Language | TypeScript |
 
-## Pattern
-
-1. Modular Pattern
-   1.1. Entity
-   1.2. Validators
-   1.3. Interface
-   1.4. Repository
-   1.5. Service
-   1.6. Serializer
-   1.7. Controller
-   1.8. Module
-2. Dependency Injection
-   2.1. Service depends on repository
-   2.2. Controller depends on service
-   2.3. Controller depends on validator
-   2.4. Controller depends on serializer
-   2.5. Repository depends on entity
-3. Layered Architecture
-   3.1. Controller Layer
-   3.2. Service Layer
-   3.3. Repository Layer
-   3.4. Entity Layer
-   3.5. Validator Layer
-   3.6. Serializer Layer
-   3.7. Interface Layer
-4. Clean Code
-   4.1. Single Responsibility
-   4.2. Don't Repeat Yourself
-   4.3. Keep It Simple Stupid
-   4.4. You Ain't Gonna Need This
-   4.5. Encapsulation
-   4.6. Abstraction
-   4.7. Polymorphism
-   4.8. Inheritance
+---
 
 ## Getting Started
+
+### Local (tanpa Docker)
 
 ```bash
 # Install dependencies
 bun install
 
 # Copy env
-cp .env.dist .env
+cp .env.example .env
+# Edit .env sesuai kebutuhan
 
-# Run dev server
+# Run dev server (hot reload)
 bun run dev
 ```
 
-Server berjalan di `http://localhost:4000`
+Server berjalan di `http://localhost:3000`
+
+### Docker Compose
+
+```bash
+cp .env.example .env
+# Edit .env sesuai kebutuhan
+
+docker compose up -d --build
+```
+
+| Service | URL |
+|---|---|
+| API | http://localhost:3000 |
+| MinIO Console | http://localhost:9001 |
+| Swagger Docs | http://localhost:3000/docs |
+
+---
+
+## Environment Variables
+
+Salin `.env.example` ke `.env` dan sesuaikan:
+
+```env
+PORT=3000
+NODE_ENV=production
+
+# MySQL
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASS=secret
+DB_NAME=be_stock
+DB_SYNC=false        # set true hanya untuk development (auto-migrate)
+
+# MinIO
+MINIO_ENDPOINT=127.0.0.1
+MINIO_PORT=9000
+MINIO_USE_SSL=false
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET_NAME=stock-app
+```
+
+---
 
 ## Project Structure
 
 ```
 src/
-├── index.ts              # Entry point
-├── config/               # Env config & database setup
-├── core/                 # Shared exceptions, helpers, validators
-├── routes/               # Route declarations (mounted at /api)
-└── modules/<name>/       # Domain modules
-    ├── entities/
-    ├── validators/
-    └── serializers/
+├── index.ts                    # Entry point — CORS, DB, MinIO init, error handler
+├── config/
+│   ├── config.ts               # Centralized env config
+│   ├── database.ts             # TypeORM DataSource
+│   └── minio.ts                # MinIO client + bucket auto-create
+├── core/
+│   ├── exceptions/base.ts      # BaseException + HTTP exception classes
+│   ├── helpers/
+│   │   ├── response.ts         # ApiResponse formatter
+│   │   ├── validator.ts        # validationHook for zValidator
+│   │   └── minio.ts            # MinioHelper static class
+│   └── validators/
+│       └── pagination.schema.ts
+├── routes/api.ts               # Semua route (mounted di /api)
+└── modules/
+    ├── unit/
+    ├── conversion/
+    ├── stock/
+    ├── stock-variant/
+    └── additional/             # Read-only helper (dropdown/search)
 ```
 
-## API Response Format
+---
+
+## API Endpoints
+
+Base URL: `/api`  
+Docs: `GET /docs` (Swagger UI)
+
+### Unit
+
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| GET | `/api/unit` | List unit (paginasi) |
+| GET | `/api/unit/:id` | Detail unit |
+| POST | `/api/unit` | Buat unit baru (auto-create base conversion) |
+
+### Conversion
+
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| GET | `/api/conversion` | List konversi (paginasi) |
+| GET | `/api/conversion/:id` | Detail konversi |
+| POST | `/api/conversion` | Buat konversi baru |
+
+### Stock
+
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| GET | `/api/stock` | List stok (paginasi) |
+| GET | `/api/stock/:id` | Detail stok |
+| POST | `/api/stock` | Buat stok baru (`multipart/form-data`) |
+
+### Stock Variant
+
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| GET | `/api/stock-variant` | List semua variant (paginasi) |
+| GET | `/api/stock-variant/:id` | Detail variant |
+| GET | `/api/stock/:stockId/stock-variant` | List variant per stok |
+| POST | `/api/stock-variant` | Buat variant baru |
+
+### Additional (Helper/Dropdown)
+
+| Method | Endpoint | Deskripsi |
+|---|---|---|
+| GET | `/api/additional/conversion` | Semua konversi (tanpa paginasi) |
+| GET | `/api/additional/base-conversion` | Hanya base conversion |
+
+---
+
+## Response Format
 
 ```json
 {
@@ -83,14 +160,38 @@ src/
   "statusCode": 200,
   "message": "...",
   "data": {},
-  "meta": { "total": 0, "perPage": 10, "currentPage": 1, "lastPage": 1 }
+  "meta": {
+    "total": 0,
+    "perPage": 10,
+    "currentPage": 1,
+    "lastPage": 1,
+    "from": 1,
+    "to": 0
+  }
 }
 ```
 
-## Adding a New Module
+---
 
-Ikuti urutan ini:
+## Module Structure
+
+Setiap domain module mengikuti urutan layer ini:
+
+```
+modules/<name>/
+├── entities/<name>.entity.ts
+├── validators/<name>.validators.ts
+├── <name>.enum.ts              # (opsional)
+├── <name>.interface.ts
+├── <name>.repository.ts
+├── <name>.service.ts
+├── serializers/<name>.serializer.ts
+├── <name>.controller.ts
+└── <name>.module.ts            # Factory: createXxxController(dataSource)
+```
+
+Urutan penambahan module baru:
 
 1. Entity → 2. Validators → 3. Interface → 4. Repository → 5. Service → 6. Serializer → 7. Controller → 8. Module
-2. Daftarkan entity di `config/database.ts`
-3. Tambahkan route di `routes/api.ts`
+9. Daftarkan entity di `src/config/database.ts`
+10. Tambahkan routes di `src/routes/api.ts`
