@@ -10,4 +10,8 @@ export class AdditionalService {
     getBaseConversions(query: string) {
         return this.repository.findBaseConversions(query)
     }
+
+    getBranches(query: string) {
+        return this.repository.findBranches(query)
+    }
 }
