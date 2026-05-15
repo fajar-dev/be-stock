@@ -2,11 +2,13 @@ import {
     Column,
     CreateDateColumn,
     Entity,
+    Index,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm'
 
 @Entity('branches')
+@Index(['createdAt'])
 export class Branch {
     @PrimaryGeneratedColumn()
     id!: number

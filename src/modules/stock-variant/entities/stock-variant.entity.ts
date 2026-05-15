@@ -1,7 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import type { Stock } from '../../stock/entities/stock.entity';
 
 @Entity('stock_variants')
+@Index(['stockId'])
+@Index(['createdAt'])
 export class StockVariant {
     @PrimaryGeneratedColumn()
     id!: number;

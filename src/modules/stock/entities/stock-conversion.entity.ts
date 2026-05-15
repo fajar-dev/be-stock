@@ -1,8 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, type Relation } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, type Relation, Index } from 'typeorm';
 import { Stock } from './stock.entity';
 import { Conversion } from '../../conversion/entities/conversion.entity';
 
 @Entity('stock_conversions')
+@Index(['stockId'])
+@Index(['conversionId'])
 export class StockConversion {
     @PrimaryGeneratedColumn()
     id!: number;

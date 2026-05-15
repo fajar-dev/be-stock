@@ -4,6 +4,7 @@ import {
     ManyToOne,
     JoinColumn,
     Entity,
+    Index,
     CreateDateColumn,
     type Relation,
     UpdateDateColumn,
@@ -14,6 +15,10 @@ import type { StockConversion } from '../../stock/entities/stock-conversion.enti
 import type { Stock } from '../../stock/entities/stock.entity'
 
 @Entity('conversions')
+@Index(['isBaseConversion', 'isActive'])
+@Index(['unitBasicId'])
+@Index(['unitConversionId'])
+@Index(['createdAt'])
 export class Conversion {
     @PrimaryGeneratedColumn()
     id!: number

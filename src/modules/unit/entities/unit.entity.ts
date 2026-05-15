@@ -2,6 +2,7 @@ import {
     Column,
     CreateDateColumn,
     Entity,
+    Index,
     OneToMany,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
@@ -9,6 +10,8 @@ import {
 import { Conversion } from '../../conversion/entities/conversion.entity'
 
 @Entity('units')
+@Index(['isActive'])
+@Index(['createdAt'])
 export class Unit {
     @PrimaryGeneratedColumn()
     id!: number

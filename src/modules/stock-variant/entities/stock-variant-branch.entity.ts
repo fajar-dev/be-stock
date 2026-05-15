@@ -1,9 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique } from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Unique, Index } from 'typeorm'
 import { StockVariant } from './stock-variant.entity'
 import { Branch } from '../../branch/entities/branch.entity'
 
 @Entity('stock_variant_branches')
 @Unique(['stockVariantId', 'branchId'])
+@Index(['branchId'])
 export class StockVariantBranch {
     @PrimaryGeneratedColumn()
     id!: number
