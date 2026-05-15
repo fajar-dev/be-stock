@@ -7,6 +7,6 @@ import { StockRepository } from '../stock/stock.repository';
 export function createStockVariantController(dataSource: DataSource): StockVariantController {
     const repository = new StockVariantRepository(dataSource);
     const stockRepository = new StockRepository(dataSource);
-    const service = new StockVariantService(repository, stockRepository);
+    const service = new StockVariantService(repository, stockRepository, dataSource);
     return new StockVariantController(service);
 }

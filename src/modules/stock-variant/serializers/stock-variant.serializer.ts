@@ -7,7 +7,6 @@ export class StockVariantSerializer {
             code: variant.code,
             name: variant.name,
             description: variant.description ?? null,
-            quantity: variant.quantity,
             stock: variant.stock ? { id: variant.stock.id, code: variant.stock.code, name: variant.stock.name, managementModel: variant.stock.managementModel } : null,
             createdAt: variant.createdAt,
         };
