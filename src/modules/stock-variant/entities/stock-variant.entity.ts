@@ -22,9 +22,6 @@ export class StockVariant {
     @Column({ type: 'text', nullable: true })
     description?: string | null;
 
-    @Column({ type: 'int', nullable: true, default: null, name: 'quantity' })
-    quantity!: number | null;
-
     @CreateDateColumn({ name: 'created_at' })
     createdAt!: Date;
 

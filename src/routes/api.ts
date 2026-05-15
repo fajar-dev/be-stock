@@ -12,6 +12,8 @@ import { CreateStockSchema } from '../modules/stock/validators/stock.validators'
 import { createStockVariantController } from '../modules/stock-variant/stock-variant.module'
 import { CreateStockVariantSchema } from '../modules/stock-variant/validators/stock-variant.validators'
 import { createAdditionalController } from '../modules/additional/additional.module'
+import { createStockVariantItemController } from '../modules/stock-variant-item/stock-variant-item.module'
+import { CreateStockVariantItemSchema } from '../modules/stock-variant-item/validators/stock-variant-item.validators'
 
 const routes = new Hono()
 
@@ -20,6 +22,7 @@ const conversionController = createConversionController(AppDataSource)
 const stockController = createStockController(AppDataSource)
 const stockVariantController = createStockVariantController(AppDataSource)
 const additionalController = createAdditionalController(AppDataSource)
+const stockVariantItemController = createStockVariantItemController(AppDataSource)
 
 routes.get('/unit', zValidator('query', PaginationSchema, validationHook), (c) => unitController.index(c))
 routes.get('/unit/:id', (c) => unitController.show(c))
@@ -37,6 +40,11 @@ routes.get('/stock/:stockId/stock-variant', zValidator('query', PaginationSchema
 routes.get('/stock-variant', zValidator('query', PaginationSchema, validationHook), (c) => stockVariantController.index(c))
 routes.get('/stock-variant/:id', (c) => stockVariantController.show(c))
 routes.post('/stock-variant', zValidator('json', CreateStockVariantSchema, validationHook), (c) => stockVariantController.store(c))
+
+routes.get('/stock-variant/:variantId/stock-variant-item', zValidator('query', PaginationSchema, validationHook), (c) => stockVariantItemController.byVariant(c))
+routes.get('/stock-variant-item', zValidator('query', PaginationSchema, validationHook), (c) => stockVariantItemController.index(c))
+routes.get('/stock-variant-item/:id', (c) => stockVariantItemController.show(c))
+routes.post('/stock-variant-item', zValidator('json', CreateStockVariantItemSchema, validationHook), (c) => stockVariantItemController.store(c))
 
 routes.get('/additional/conversion', (c) => additionalController.conversions(c))
 routes.get('/additional/base-conversion', (c) => additionalController.baseConversions(c))
