@@ -18,7 +18,11 @@ tags:
   - name: Stock
     description: Data barang/stok. Upload foto via multipart/form-data.
   - name: StockVariant
-    description: Varian dari sebuah stok (serial number, lot, dll)
+    description: Varian dari sebuah stok. Dibuat secara bulk (array).
+  - name: StockVariantItem
+    description: Item stok variant (LOT / SERIAL_NUMBER). Dibuat secara bulk per variant.
+  - name: Branch
+    description: Data cabang/branch
   - name: Additional
     description: Endpoint helper read-only untuk kebutuhan dropdown dan pencarian
 
@@ -292,10 +296,10 @@ paths:
 
     post:
       tags: [StockVariant]
-      summary: Buat varian stok baru
+      summary: Buat varian stok baru (bulk)
       description: |
-        Field `quantity` hanya berlaku jika `managementModel` stok adalah `UNIK`.
-        Untuk model `LOT` dan `SERIAL_NUMBER`, quantity akan diset null secara otomatis.
+        Membuat beberapa varian sekaligus untuk satu stok. Field `variant` adalah array minimal 1 item.
+        Code varian harus unik.
       requestBody:
         required: true
         content:
@@ -304,17 +308,21 @@ paths:
               $ref: "#/components/schemas/CreateStockVariantRequest"
             example:
               stockId: 1
-              code: VAR-001
-              name: Kabel UTP Cat6 - 1 Box
-              description: Box isi 305 meter
-              quantity: 10
+              variant:
+                - code: VAR-001
+                  name: Kabel UTP Cat6 - Box A
+                  branchId: 2
+                  description: Box isi 305 meter
+                - code: VAR-002
+                  name: Kabel UTP Cat6 - Box B
+                  branchId: 3
       responses:
         "201":
           description: Varian stok berhasil dibuat
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StockVariantSuccessResponse"
+                $ref: "#/components/schemas/StockVariantCollectionResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
         "409":
@@ -335,6 +343,184 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StockVariantSuccessResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── STOCK VARIANT ITEM ───────────────────────────────────────────────────────
+  /stock-variant/{variantId}/stock-variant-item:
+    get:
+      tags: [StockVariantItem]
+      summary: List item berdasarkan varian
+      parameters:
+        - in: path
+          name: variantId
+          required: true
+          schema:
+            type: integer
+          description: ID varian stok
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Berhasil mengambil item varian
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantItemPaginatedResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /stock-variant-item:
+    get:
+      tags: [StockVariantItem]
+      summary: List semua item stok variant
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Berhasil mengambil semua item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantItemPaginatedResponse"
+
+    post:
+      tags: [StockVariantItem]
+      summary: Tambah item ke varian (bulk)
+      description: |
+        Menambah item ke satu varian stok secara bulk. Field `item` adalah array minimal 1 item.
+
+        - Untuk **LOT**: isi `lot` dan `quantity`
+        - Untuk **SERIAL_NUMBER**: isi `serialNumber` saja (quantity otomatis 1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStockVariantItemRequest"
+            examples:
+              lot:
+                summary: LOT
+                value:
+                  stockVariantId: 1
+                  item:
+                    - lot: LOT-2025-001
+                      quantity: 50
+                    - lot: LOT-2025-002
+                      quantity: 30
+              serial_number:
+                summary: SERIAL_NUMBER
+                value:
+                  stockVariantId: 2
+                  item:
+                    - serialNumber: SN-00001
+                    - serialNumber: SN-00002
+      responses:
+        "201":
+          description: Item berhasil ditambahkan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantItemCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /stock-variant-item/{id}:
+    get:
+      tags: [StockVariantItem]
+      summary: Detail item stok variant
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Detail item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockVariantItemSuccessResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── BRANCH ──────────────────────────────────────────────────────────────────
+  /branch:
+    get:
+      tags: [Branch]
+      summary: List semua branch
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Cari berdasarkan nama atau kode
+      responses:
+        "200":
+          description: Berhasil mengambil data branch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BranchPaginatedResponse"
+              example:
+                success: true
+                statusCode: 200
+                message: Branches retrieved successfully
+                data:
+                  - id: 1
+                    code: JKT-01
+                    name: Jakarta Pusat
+                    createdAt: "2025-01-01T00:00:00.000Z"
+                    updatedAt: "2025-01-01T00:00:00.000Z"
+                meta:
+                  total: 1
+                  perPage: 10
+                  currentPage: 1
+                  lastPage: 1
+                  from: 1
+                  to: 1
+
+    post:
+      tags: [Branch]
+      summary: Buat branch baru
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBranchRequest"
+            example:
+              code: JKT-01
+              name: Jakarta Pusat
+      responses:
+        "201":
+          description: Branch berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BranchSuccessResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /branch/{id}:
+    get:
+      tags: [Branch]
+      summary: Detail branch
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Detail branch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BranchSuccessResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -394,6 +580,36 @@ paths:
                     name: Meter
                   - id: 2
                     name: Rol
+
+  /additional/branch:
+    get:
+      tags: [Additional]
+      summary: Cari branch untuk dropdown
+      description: Mengembalikan daftar branch. Cocok untuk select/autocomplete.
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Cari berdasarkan nama atau kode
+      responses:
+        "200":
+          description: Daftar branch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdditionalBranchListResponse"
+              example:
+                success: true
+                statusCode: 200
+                message: Branches retrieved successfully
+                data:
+                  - id: 1
+                    code: JKT-01
+                    name: Jakarta Pusat
+                  - id: 2
+                    code: BDG-01
+                    name: Bandung
 
 # ─── COMPONENTS ──────────────────────────────────────────────────────────────
 components:
@@ -829,11 +1045,6 @@ components:
           type: string
           nullable: true
           example: Box isi 305 meter
-        quantity:
-          type: integer
-          nullable: true
-          description: Jumlah stok. Hanya terisi jika managementModel stok adalah UNIK.
-          example: 10
         stock:
           type: object
           nullable: true
@@ -855,33 +1066,40 @@ components:
       type: object
       required:
         - stockId
-        - code
-        - name
+        - variant
       properties:
         stockId:
           type: integer
           description: ID stok induk
           example: 1
-        code:
-          type: string
-          minLength: 1
-          maxLength: 50
-          example: VAR-001
-        name:
-          type: string
-          minLength: 1
-          maxLength: 150
-          example: Kabel UTP Cat6 - 1 Box
-        description:
-          type: string
-          nullable: true
-          example: Box isi 305 meter
-        quantity:
-          type: integer
-          minimum: 0
-          nullable: true
-          description: Hanya relevan jika managementModel stok adalah UNIK. Untuk LOT/SERIAL_NUMBER akan diabaikan.
-          example: 10
+        variant:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - code
+              - name
+              - branchId
+            properties:
+              code:
+                type: string
+                minLength: 1
+                maxLength: 50
+                example: VAR-001
+              name:
+                type: string
+                minLength: 1
+                maxLength: 150
+                example: Kabel UTP Cat6 - Box A
+              branchId:
+                type: integer
+                description: ID branch. Alokasi quantity 0 otomatis dibuat untuk branch ini.
+                example: 2
+              description:
+                type: string
+                nullable: true
+                example: Box isi 305 meter
 
     StockVariantSuccessResponse:
       allOf:
@@ -890,6 +1108,16 @@ components:
           properties:
             data:
               $ref: "#/components/schemas/StockVariantObject"
+
+    StockVariantCollectionResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockVariantObject"
 
     StockVariantPaginatedResponse:
       allOf:
@@ -900,6 +1128,161 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/StockVariantObject"
+
+    # ── STOCK VARIANT ITEM ─────────────────────────────────────────────────────
+    StockVariantItemObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        stockVariantId:
+          type: integer
+          example: 1
+        stockVariant:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            code:
+              type: string
+            name:
+              type: string
+        serialNumber:
+          type: string
+          nullable: true
+          example: SN-00001
+        lot:
+          type: string
+          nullable: true
+          example: LOT-2025-001
+        quantity:
+          type: integer
+          example: 50
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00.000Z"
+
+    CreateStockVariantItemRequest:
+      type: object
+      required:
+        - stockVariantId
+        - item
+      properties:
+        stockVariantId:
+          type: integer
+          description: ID varian stok
+          example: 1
+        item:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            properties:
+              lot:
+                type: string
+                nullable: true
+                maxLength: 100
+                description: Diisi untuk managementModel LOT
+                example: LOT-2025-001
+              serialNumber:
+                type: string
+                nullable: true
+                maxLength: 100
+                description: Diisi untuk managementModel SERIAL_NUMBER
+                example: SN-00001
+              quantity:
+                type: integer
+                minimum: 1
+                description: Jumlah item. Untuk SERIAL_NUMBER otomatis 1.
+                example: 50
+
+    StockVariantItemSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/StockVariantItemObject"
+
+    StockVariantItemCollectionResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockVariantItemObject"
+
+    StockVariantItemPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/StockVariantItemObject"
+
+    # ── BRANCH ─────────────────────────────────────────────────────────────────
+    BranchObject:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: JKT-01
+        name:
+          type: string
+          example: Jakarta Pusat
+        createdAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2025-01-01T00:00:00.000Z"
+
+    CreateBranchRequest:
+      type: object
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: JKT-01
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: Jakarta Pusat
+
+    BranchSuccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/BranchObject"
+
+    BranchPaginatedResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/BranchObject"
 
     # ── ADDITIONAL ─────────────────────────────────────────────────────────────
     AdditionalItem:
@@ -921,6 +1304,29 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/AdditionalItem"
+
+    AdditionalBranchItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: JKT-01
+        name:
+          type: string
+          example: Jakarta Pusat
+
+    AdditionalBranchListResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AdditionalBranchItem"
 
     # ── SHARED WRAPPERS ────────────────────────────────────────────────────────
     SuccessWrapper:

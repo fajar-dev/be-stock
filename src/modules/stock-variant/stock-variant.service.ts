@@ -2,15 +2,16 @@ import { DataSource } from 'typeorm';
 import { IStockVariantRepository } from './stock-variant.interface';
 import { CreateStockVariantValidator } from './validators/stock-variant.validators';
 import { IStockRepository } from '../stock/stock.interface';
+import { IBranchRepository } from '../branch/branch.interface';
 import { NotFoundException, ConflictException, BadRequestException } from '../../core/exceptions/base';
-import { ManagementModel } from '../stock/stock.enum';
 import { StockVariant } from './entities/stock-variant.entity';
-import { StockVariantItem } from '../stock-variant-item/entities/stock-variant-item.entity';
+import { StockVariantBranch } from './entities/stock-variant-branch.entity';
 
 export class StockVariantService {
     constructor(
         private readonly repository: IStockVariantRepository,
         private readonly stockRepository: IStockRepository,
+        private readonly branchRepository: IBranchRepository,
         private readonly dataSource: DataSource,
     ) {}
 
@@ -38,46 +39,30 @@ export class StockVariantService {
             const created: StockVariant[] = [];
 
             for (const v of data.variant) {
-                const existing = await manager.findOne(StockVariant, { where: { code: v.code } });
-                if (existing) throw new ConflictException(`Variant code '${v.code}' already exists`);
+                const branch = await this.branchRepository.findById(v.branchId);
+                if (!branch) throw new BadRequestException(`Branch with id '${v.branchId}' not found`);
 
-                if (stock.managementModel === ManagementModel.UNIK) {
-                    if (v.quantity == null) throw new BadRequestException(`quantity required for UNIK variant`);
+                let variant = await manager.findOne(StockVariant, { where: { code: v.code } });
+
+                if (variant) {
+                    const existingAlloc = await manager.findOne(StockVariantBranch, {
+                        where: { stockVariantId: variant.id, branchId: v.branchId },
+                    });
+                    if (existingAlloc) throw new ConflictException(`Variant '${v.code}' sudah ada di branch ini`);
                 } else {
-                    if (!v.item?.length) throw new BadRequestException(`item required for ${stock.managementModel} variant`);
-                }
-
-                const variant = await manager.save(manager.create(StockVariant, {
-                    stockId: data.stockId,
-                    code: v.code,
-                    name: v.name,
-                    description: v.description ?? null,
-                }));
-
-                if (stock.managementModel === ManagementModel.UNIK) {
-                    await manager.save(manager.create(StockVariantItem, {
-                        stockVariantId: variant.id,
-                        quantity: v.quantity!,
+                    variant = await manager.save(manager.create(StockVariant, {
+                        stockId: data.stockId,
+                        code: v.code,
+                        name: v.name,
+                        description: v.description ?? null,
                     }));
-                } else if (stock.managementModel === ManagementModel.LOT) {
-                    for (const item of v.item!) {
-                        if (!item.lot) throw new BadRequestException(`lot is required for LOT item`);
-                        await manager.save(manager.create(StockVariantItem, {
-                            stockVariantId: variant.id,
-                            lot: item.lot,
-                            quantity: item.quantity ?? 0,
-                        }));
-                    }
-                } else if (stock.managementModel === ManagementModel.SERIAL_NUMBER) {
-                    for (const item of v.item!) {
-                        if (!item.serialNumber) throw new BadRequestException(`serialNumber is required for SERIAL_NUMBER item`);
-                        await manager.save(manager.create(StockVariantItem, {
-                            stockVariantId: variant.id,
-                            serialNumber: item.serialNumber,
-                            quantity: 1,
-                        }));
-                    }
                 }
+
+                await manager.save(manager.create(StockVariantBranch, {
+                    stockVariantId: variant.id,
+                    branchId: v.branchId,
+                    quantity: 0,
+                }));
 
                 created.push(variant);
             }

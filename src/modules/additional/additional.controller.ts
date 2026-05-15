@@ -16,4 +16,10 @@ export class AdditionalController {
         const data = await this.service.getBaseConversions(query)
         return ApiResponse.success(c, data, 'Base conversions retrieved successfully')
     }
+
+    async branches(c: Context) {
+        const query = c.req.query('q') || ''
+        const data = await this.service.getBranches(query)
+        return ApiResponse.success(c, data, 'Branches retrieved successfully')
+    }
 }

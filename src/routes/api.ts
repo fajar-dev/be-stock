@@ -14,6 +14,8 @@ import { CreateStockVariantSchema } from '../modules/stock-variant/validators/st
 import { createAdditionalController } from '../modules/additional/additional.module'
 import { createStockVariantItemController } from '../modules/stock-variant-item/stock-variant-item.module'
 import { CreateStockVariantItemSchema } from '../modules/stock-variant-item/validators/stock-variant-item.validators'
+import { createBranchController } from '../modules/branch/branch.module'
+import { CreateBranchSchema } from '../modules/branch/validators/branch.validators'
 
 const routes = new Hono()
 
@@ -23,6 +25,7 @@ const stockController = createStockController(AppDataSource)
 const stockVariantController = createStockVariantController(AppDataSource)
 const additionalController = createAdditionalController(AppDataSource)
 const stockVariantItemController = createStockVariantItemController(AppDataSource)
+const branchController = createBranchController(AppDataSource)
 
 routes.get('/unit', zValidator('query', PaginationSchema, validationHook), (c) => unitController.index(c))
 routes.get('/unit/:id', (c) => unitController.show(c))
@@ -46,7 +49,12 @@ routes.get('/stock-variant-item', zValidator('query', PaginationSchema, validati
 routes.get('/stock-variant-item/:id', (c) => stockVariantItemController.show(c))
 routes.post('/stock-variant-item', zValidator('json', CreateStockVariantItemSchema, validationHook), (c) => stockVariantItemController.store(c))
 
+routes.get('/branch', zValidator('query', PaginationSchema, validationHook), (c) => branchController.index(c))
+routes.get('/branch/:id', (c) => branchController.show(c))
+routes.post('/branch', zValidator('json', CreateBranchSchema, validationHook), (c) => branchController.store(c))
+
 routes.get('/additional/conversion', (c) => additionalController.conversions(c))
 routes.get('/additional/base-conversion', (c) => additionalController.baseConversions(c))
+routes.get('/additional/branch', (c) => additionalController.branches(c))
 
 export default routes
