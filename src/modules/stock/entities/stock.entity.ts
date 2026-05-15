@@ -1,10 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
 import { Conversion } from '../../conversion/entities/conversion.entity';
 import { StockConversion } from './stock-conversion.entity';
 import { ItemType, ToolType, Category, ManagementModel } from '../stock.enum';
 import type { StockVariant } from '../../stock-variant/entities/stock-variant.entity';
 
 @Entity('stocks')
+@Index(['baseConversionId'])
+@Index(['managementModel'])
+@Index(['createdAt'])
 export class Stock {
     @PrimaryGeneratedColumn()
     id!: number;

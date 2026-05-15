@@ -1,7 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import type { StockVariant } from '../../stock-variant/entities/stock-variant.entity';
 
 @Entity('stock_variant_items')
+@Index(['stockVariantId'])
+@Index(['serialNumber'])
+@Index(['lot'])
+@Index(['createdAt'])
 export class StockVariantItem {
     @PrimaryGeneratedColumn()
     id!: number;
