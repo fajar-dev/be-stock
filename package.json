@@ -5,7 +5,9 @@
   "scripts": {
     "start": "bun run dist/index.js",
     "dev": "bun run --hot src/index.ts",
-    "build": "bun build --minify --outfile dist/index.js --target bun src/index.ts"
+    "build": "bun build --minify --outfile dist/index.js --target bun src/index.ts",
+    "test": "bun test tests/",
+    "test:watch": "bun test --watch tests/"
   },
   "dependencies": {
     "@hono/swagger-ui": "^0.6.1",
