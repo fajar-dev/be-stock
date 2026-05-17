@@ -477,6 +477,129 @@ Use this pattern only when the module is purely a helper with no writes and no o
 
 ---
 
+## Tests
+
+Tests are E2E using `bun:test`. Each test file spins up a real in-memory app + DB, seeds data in `beforeAll`, and tears down in `afterAll`. No unit tests, no mocks except MinIO.
+
+**File location**: `tests/<module>.test.ts`
+
+**Boilerplate**:
+
+```ts
+import { describe, test, expect, beforeAll, afterAll, jest } from 'bun:test'
+import { createTestDataSource, createTestApp, get, post } from './helpers/app'
+import { MinioHelper } from '../src/core/helpers/minio'
+
+jest.spyOn(MinioHelper, 'getPresignedUrl').mockResolvedValue('http://mock-minio/photo.jpg')
+
+const dataSource = createTestDataSource()
+const app = createTestApp(dataSource)
+const uid = Date.now()   // prevents collisions between test runs
+
+let resourceId: number
+
+beforeAll(async () => {
+    await dataSource.initialize()
+    // seed dependencies here
+})
+afterAll(async () => { await dataSource.destroy() })
+
+describe('ModuleName', () => {
+    test('POST /resource — create', async () => { ... })
+    test('POST /resource — 409 duplicate', async () => { ... })
+    test('GET /resource — list', async () => { ... })
+    test('GET /resource/:id — detail', async () => { ... })
+    test('GET /resource/:id — 404 not found', async () => { ... })
+})
+```
+
+**Rules**:
+
+- Always mock MinIO when the module has a `photo` field
+- Use `uid = Date.now()` suffix on all seeded codes/names to avoid collisions
+- Seed all dependencies (unit → conversion → stock → etc.) in `beforeAll` before the module under test
+- Every new route must be registered in **both** `src/routes/api.ts` and `tests/helpers/app.ts`
+- Test happy path + key error cases (404, 409, 400, 422) — don't test every edge case
+- For modules that shape data (e.g. additional endpoints), assert the response shape fields explicitly
+
+```ts
+// assert shape for additional/variant
+expect(Array.isArray(item.conversion)).toBe(true)
+expect(item.stock.managementModel).toBe('UNIK')
+```
+
+---
+
+## Swagger (`swagger.yml`)
+
+All endpoints are documented in `swagger.yml` at the project root using OpenAPI 3.0.
+
+**Adding an endpoint** — follow this structure:
+
+```yaml
+  /resource:
+    post:
+      tags: [TagName]
+      summary: Short action description
+      description: |
+        Longer explanation if needed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateResourceRequest"
+            example:
+              field: value
+      responses:
+        "201":
+          description: Resource created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResourceSuccessResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+```
+
+**Schema naming conventions**:
+
+| Schema | Purpose |
+|---|---|
+| `Create<Module>Request` | POST request body |
+| `Update<Module>Request` | PUT request body |
+| `<Module>Object` | Single resource shape |
+| `<Module>SuccessResponse` | `SuccessWrapper` + single object |
+| `<Module>CollectionResponse` | `SuccessWrapper` + array |
+| `<Module>PaginatedResponse` | `PaginatedWrapper` + array |
+| `Additional<Name>Item` | Lightweight helper response item |
+| `Additional<Name>ListResponse` | `SuccessWrapper` + array of above |
+
+**Shared wrappers** — always use `$ref`, never repeat the wrapper structure inline:
+
+```yaml
+ResourceSuccessResponse:
+  allOf:
+    - $ref: "#/components/schemas/SuccessWrapper"
+    - type: object
+      properties:
+        data:
+          $ref: "#/components/schemas/ResourceObject"
+```
+
+**Rules**:
+
+- Always include an inline `example:` on every endpoint (not just the schema)
+- Use `$ref: "#/components/responses/BadRequest|NotFound|Conflict|ValidationError"` for standard errors
+- Add new schemas in `components/schemas` grouped by module with a comment header `# ── MODULE NAME ──`
+- Enums (e.g. `ManagementModel`) are defined once in `components/schemas` and referenced via `$ref`
+
+---
+
 ## Adding a New Module — Checklist
 
 1. Create folder `src/modules/<name>/`
@@ -490,5 +613,7 @@ Use this pattern only when the module is purely a helper with no writes and no o
 9. `<name>.controller.ts` — HTTP handlers
 10. `<name>.module.ts` — `create<Name>Controller(dataSource)` factory
 11. Register ALL new entities in `src/config/database.ts` → `entities: [Stock, NewEntity]`
-12. Add routes to `src/routes/api.ts`
+12. Add routes to `src/routes/api.ts` **and** `tests/helpers/app.ts`
 13. For file uploads: use `zValidator('form', ...)` instead of `'json'`
+14. Write `tests/<name>.test.ts` — seed dependencies, test CRUD + error cases
+15. Document all endpoints in `swagger.yml` — schema + inline example
