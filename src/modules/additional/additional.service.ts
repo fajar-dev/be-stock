@@ -14,4 +14,8 @@ export class AdditionalService {
     getBranches(query: string) {
         return this.repository.findBranches(query)
     }
+
+    getVariants(query: string) {
+        return this.repository.findVariants(query)
+    }
 }

@@ -58,6 +58,7 @@ routes.post('/branch', zValidator('json', CreateBranchSchema, validationHook), (
 routes.get('/additional/conversion', (c) => additionalController.conversions(c))
 routes.get('/additional/base-conversion', (c) => additionalController.baseConversions(c))
 routes.get('/additional/branch', (c) => additionalController.branches(c))
+routes.get('/additional/variant', (c) => additionalController.variants(c))
 
 routes.get('/upload/presigned', (c) => uploadController.presigned(c))
 

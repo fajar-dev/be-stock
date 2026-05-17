@@ -682,6 +682,45 @@ paths:
                     code: BDG-01
                     name: Bandung
 
+  /additional/variant:
+    get:
+      tags: [Additional]
+      summary: Cari stock variant untuk dropdown
+      description: Mengembalikan daftar stock variant beserta konversi dan info stok. Cocok untuk select/autocomplete.
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Cari berdasarkan nama atau kode varian
+      responses:
+        "200":
+          description: Daftar stock variant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdditionalVariantListResponse"
+              example:
+                success: true
+                statusCode: 200
+                message: Variants retrieved successfully
+                data:
+                  - id: 1
+                    code: VAR-001
+                    name: Kabel UTP Cat6 - Box A
+                    conversion:
+                      - id: 1
+                        name: Pcs
+                        isBaseConversion: true
+                      - id: 2
+                        name: Box
+                        isBaseConversion: false
+                    stock:
+                      id: 1
+                      code: STK-001
+                      name: Kabel UTP Cat6
+                      managementModel: UNIK
+
 # ─── COMPONENTS ──────────────────────────────────────────────────────────────
 components:
   parameters:
@@ -1416,6 +1455,58 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/AdditionalBranchItem"
+
+    AdditionalVariantItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: VAR-001
+        name:
+          type: string
+          example: Kabel UTP Cat6 - Box A
+        conversion:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                example: 1
+              name:
+                type: string
+                example: Pcs
+              isBaseConversion:
+                type: boolean
+                example: true
+        stock:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+              example: 1
+            code:
+              type: string
+              example: STK-001
+            name:
+              type: string
+              example: Kabel UTP Cat6
+            managementModel:
+              $ref: "#/components/schemas/ManagementModel"
+
+    AdditionalVariantListResponse:
+      allOf:
+        - $ref: "#/components/schemas/SuccessWrapper"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/AdditionalVariantItem"
 
     # ── SHARED WRAPPERS ────────────────────────────────────────────────────────
     SuccessWrapper:
