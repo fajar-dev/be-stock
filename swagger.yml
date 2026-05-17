@@ -305,7 +305,9 @@ paths:
         Untuk field `photo`, upload file terlebih dahulu via `POST /upload?folder=stock-variants`,
         kemudian gunakan `objectName` yang dikembalikan sebagai nilai field `photo` di sini.
 
-        Code varian harus unik. Alokasi quantity 0 otomatis dibuat untuk branch yang dipilih.
+        Code varian harus unik. Jika `managementModel` stok adalah `UNIK`, sertakan field `quantity`
+        untuk menentukan jumlah awal stok di branch tersebut. Untuk model LOT dan SERIAL_NUMBER, field
+        `quantity` diabaikan dan nilai awal branch selalu 0.
       requestBody:
         required: true
         content:
@@ -318,11 +320,13 @@ paths:
                 - code: VAR-001
                   name: Kabel UTP Cat6 - Box A
                   branchId: 2
+                  quantity: 10
                   photo: stock-variants/1234567890-123.jpg
                   description: Box isi 305 meter
                 - code: VAR-002
                   name: Kabel UTP Cat6 - Box B
                   branchId: 3
+                  quantity: 5
       responses:
         "201":
           description: Varian stok berhasil dibuat
@@ -1167,8 +1171,15 @@ components:
                 example: Kabel UTP Cat6 - Box A
               branchId:
                 type: integer
-                description: ID branch. Alokasi quantity 0 otomatis dibuat untuk branch ini.
+                description: ID branch tempat varian dialokasikan.
                 example: 2
+              quantity:
+                type: integer
+                minimum: 0
+                description: >
+                  Jumlah awal stok di branch ini. Hanya digunakan jika `managementModel` stok
+                  adalah `UNIK`. Untuk LOT dan SERIAL_NUMBER nilai ini diabaikan (selalu 0).
+                example: 10
               photo:
                 type: string
                 nullable: true

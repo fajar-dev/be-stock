@@ -5,6 +5,7 @@ const BulkVariantSchema = z.object({
     code: z.string().min(1).max(50),
     name: z.string().min(1).max(150),
     branchId: z.coerce.number().int().positive(),
+    quantity: z.coerce.number().int().nonnegative().optional(),
     description: z.string().optional().nullable(),
 });
 

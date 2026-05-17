@@ -4,6 +4,7 @@ import { CreateStockVariantValidator } from './validators/stock-variant.validato
 import { IStockRepository } from '../stock/stock.interface';
 import { IBranchRepository } from '../branch/branch.interface';
 import { NotFoundException, ConflictException, BadRequestException } from '../../core/exceptions/base';
+import { ManagementModel } from '../stock/stock.enum';
 import { StockVariant } from './entities/stock-variant.entity';
 import { StockVariantBranch } from './entities/stock-variant-branch.entity';
 
@@ -62,7 +63,7 @@ export class StockVariantService {
                 await manager.save(manager.create(StockVariantBranch, {
                     stockVariantId: variant.id,
                     branchId: v.branchId,
-                    quantity: 0,
+                    quantity: stock.managementModel === ManagementModel.UNIK ? (v.quantity ?? 0) : 0,
                 }));
 
                 result.push(variant);
