@@ -21,6 +21,9 @@ export class StockVariant {
     @Column({ length: 150 })
     name!: string;
 
+    @Column({ length: 255, nullable: true })
+    photo?: string | null;
+
     @Column({ type: 'text', nullable: true })
     description?: string | null;
 

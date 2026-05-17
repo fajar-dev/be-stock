@@ -18,11 +18,13 @@ tags:
   - name: Stock
     description: Data barang/stok. Upload foto via multipart/form-data.
   - name: StockVariant
-    description: Varian dari sebuah stok. Dibuat secara bulk (array).
+    description: Varian dari sebuah stok. Dibuat secara bulk (array). Upload foto per varian via multipart/form-data.
   - name: StockVariantItem
     description: Item stok variant (LOT / SERIAL_NUMBER). Dibuat secara bulk per variant.
   - name: Branch
     description: Data cabang/branch
+  - name: Upload
+    description: Upload file ke MinIO. Gunakan objectName yang dikembalikan sebagai nilai foto di endpoint lain.
   - name: Additional
     description: Endpoint helper read-only untuk kebutuhan dropdown dan pencarian
 
@@ -215,14 +217,14 @@ paths:
       tags: [Stock]
       summary: Buat stok baru
       description: |
-        Membuat stok baru. Menggunakan `multipart/form-data` karena mendukung upload foto ke MinIO.
+        Membuat stok baru.
 
-        Field `conversionUnit` dikirim sebagai multiple form values dengan key yang sama, contoh:
-        `conversionUnit=1&conversionUnit=2`
+        Untuk field `photo`, upload file terlebih dahulu via `POST /upload?folder=stocks`,
+        kemudian gunakan `objectName` yang dikembalikan sebagai nilai field `photo` di sini.
       requestBody:
         required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               $ref: "#/components/schemas/CreateStockRequest"
       responses:
@@ -299,7 +301,11 @@ paths:
       summary: Buat varian stok baru (bulk)
       description: |
         Membuat beberapa varian sekaligus untuk satu stok. Field `variant` adalah array minimal 1 item.
-        Code varian harus unik.
+
+        Untuk field `photo`, upload file terlebih dahulu via `POST /upload?folder=stock-variants`,
+        kemudian gunakan `objectName` yang dikembalikan sebagai nilai field `photo` di sini.
+
+        Code varian harus unik. Alokasi quantity 0 otomatis dibuat untuk branch yang dipilih.
       requestBody:
         required: true
         content:
@@ -312,6 +318,7 @@ paths:
                 - code: VAR-001
                   name: Kabel UTP Cat6 - Box A
                   branchId: 2
+                  photo: stock-variants/1234567890-123.jpg
                   description: Box isi 305 meter
                 - code: VAR-002
                   name: Kabel UTP Cat6 - Box B
@@ -523,6 +530,64 @@ paths:
                 $ref: "#/components/schemas/BranchSuccessResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  # ─── UPLOAD ──────────────────────────────────────────────────────────────────
+  /upload:
+    post:
+      tags: [Upload]
+      summary: Upload file ke MinIO
+      description: |
+        Upload satu file ke MinIO. Gunakan query param `folder` untuk menentukan direktori penyimpanan.
+
+        Folder yang diizinkan: `stocks`, `stock-variants`
+
+        `objectName` yang dikembalikan digunakan sebagai nilai field `photo` di endpoint lain.
+      parameters:
+        - in: query
+          name: folder
+          required: true
+          schema:
+            type: string
+            enum: [stocks, stock-variants]
+          description: Folder tujuan di MinIO
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File yang akan diupload
+      responses:
+        "201":
+          description: File berhasil diupload
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessWrapper"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          objectName:
+                            type: string
+                            description: Path objek di MinIO
+                            example: stock-variants/1234567890-123.jpg
+              example:
+                success: true
+                statusCode: 201
+                message: File uploaded successfully
+                data:
+                  objectName: stock-variants/1234567890-123.jpg
+        "400":
+          $ref: "#/components/responses/BadRequest"
 
   # ─── ADDITIONAL ──────────────────────────────────────────────────────────────
   /additional/conversion:
@@ -987,9 +1052,9 @@ components:
         managementModel:
           $ref: "#/components/schemas/ManagementModel"
         baseConversionId:
-          type: string
-          description: ID base conversion (satuan dasar). Dikirim sebagai string karena form-data.
-          example: "1"
+          type: integer
+          description: ID base conversion (satuan dasar)
+          example: 1
         itemType:
           $ref: "#/components/schemas/ItemType"
         toolType:
@@ -998,8 +1063,9 @@ components:
           $ref: "#/components/schemas/Category"
         photo:
           type: string
-          format: binary
-          description: File foto produk (opsional). Akan diupload ke MinIO.
+          nullable: true
+          description: objectName dari hasil POST /upload?folder=stocks (opsional)
+          example: stocks/1234567890-123.jpg
         description:
           type: string
           example: Kabel jaringan UTP kategori 6
@@ -1041,6 +1107,11 @@ components:
         name:
           type: string
           example: Kabel UTP Cat6 - 1 Box
+        photo:
+          type: string
+          nullable: true
+          description: URL foto dari MinIO (presigned URL). Null jika tidak ada foto.
+          example: "http://localhost:9000/stock-app/stock-variants/1234567890-123.jpg"
         description:
           type: string
           nullable: true
@@ -1096,6 +1167,11 @@ components:
                 type: integer
                 description: ID branch. Alokasi quantity 0 otomatis dibuat untuk branch ini.
                 example: 2
+              photo:
+                type: string
+                nullable: true
+                description: objectName dari hasil POST /upload (opsional)
+                example: stock-variants/1234567890-123.jpg
               description:
                 type: string
                 nullable: true

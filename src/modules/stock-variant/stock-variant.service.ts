@@ -54,6 +54,7 @@ export class StockVariantService {
                         stockId: data.stockId,
                         code: v.code,
                         name: v.name,
+                        photo: typeof v.photo === 'string' ? v.photo : null,
                         description: v.description ?? null,
                     }));
                 }

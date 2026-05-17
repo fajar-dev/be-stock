@@ -5,20 +5,13 @@ export const CreateStockSchema = z.object({
     code: z.string().min(1),
     name: z.string().min(1),
     managementModel: z.enum(ManagementModel),
-    baseConversionId: z.string().transform(Number),
+    baseConversionId: z.number().int().positive(),
     itemType: z.enum(ItemType),
     toolType: z.enum(ToolType),
     category: z.enum(Category),
-    photo: z.union([z.instanceof(File), z.string()]).optional(),
+    photo: z.string().optional().nullable(),
     description: z.string().optional(),
-    conversionUnit: z.preprocess((val) => {
-        if (!val) return undefined;
-        if (typeof val === 'string') {
-            try { return JSON.parse(val).map(Number); } catch { return val.split(',').filter(Boolean).map(Number); }
-        }
-        if (Array.isArray(val)) return val.map(Number);
-        return [Number(val)];
-    }, z.array(z.number())).optional(),
+    conversionUnit: z.array(z.number()).optional(),
 });
 
 
