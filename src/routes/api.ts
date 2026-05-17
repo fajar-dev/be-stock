@@ -16,9 +16,11 @@ import { createStockVariantItemController } from '../modules/stock-variant-item/
 import { CreateStockVariantItemSchema } from '../modules/stock-variant-item/validators/stock-variant-item.validators'
 import { createBranchController } from '../modules/branch/branch.module'
 import { CreateBranchSchema } from '../modules/branch/validators/branch.validators'
+import { UploadController } from '../modules/upload/upload.controller'
 
 const routes = new Hono()
 
+const uploadController = new UploadController()
 const unitController = createUnitController(AppDataSource)
 const conversionController = createConversionController(AppDataSource)
 const stockController = createStockController(AppDataSource)
@@ -37,7 +39,7 @@ routes.post('/conversion', zValidator('json', CreateConversionSchema, validation
 
 routes.get('/stock', zValidator('query', PaginationSchema, validationHook), (c) => stockController.index(c))
 routes.get('/stock/:id', (c) => stockController.show(c))
-routes.post('/stock', zValidator('form', CreateStockSchema, validationHook), (c) => stockController.store(c))
+routes.post('/stock', zValidator('json', CreateStockSchema, validationHook), (c) => stockController.store(c))
 
 routes.get('/stock/:stockId/stock-variant', zValidator('query', PaginationSchema, validationHook), (c) => stockVariantController.byStock(c))
 routes.get('/stock-variant', zValidator('query', PaginationSchema, validationHook), (c) => stockVariantController.index(c))
@@ -56,5 +58,7 @@ routes.post('/branch', zValidator('json', CreateBranchSchema, validationHook), (
 routes.get('/additional/conversion', (c) => additionalController.conversions(c))
 routes.get('/additional/base-conversion', (c) => additionalController.baseConversions(c))
 routes.get('/additional/branch', (c) => additionalController.branches(c))
+
+routes.post('/upload', (c) => uploadController.store(c))
 
 export default routes

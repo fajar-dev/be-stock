@@ -4,8 +4,6 @@ import { ApiResponse } from '../../core/helpers/response';
 import { StockSerializer } from './serializers/stock.serializer';
 import { CreateStockValidator } from './validators/stock.validators';
 import { PaginationValidator } from '../../core/validators/pagination.schema';
-import { MinioHelper } from '../../core/helpers/minio';
-
 export class StockController {
     constructor(private readonly service: StockService) { }
 
@@ -25,12 +23,7 @@ export class StockController {
     }
 
     async store(c: Context) {
-        const data = c.req.valid('form' as never) as CreateStockValidator;
-        
-        if (data.photo instanceof File) {
-            data.photo = await MinioHelper.uploadFromFile(data.photo, 'stocks');
-        }
-
+        const data = c.req.valid('json' as never) as CreateStockValidator;
         const stock = await this.service.create(data);
         const serializedStock = await StockSerializer.single(stock);
         return ApiResponse.success(c, serializedStock, "Stock created successfully", 201);
