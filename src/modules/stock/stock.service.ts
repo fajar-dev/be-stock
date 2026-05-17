@@ -2,7 +2,6 @@ import { IStockRepository } from './stock.interface';
 import { CreateStockValidator } from './validators/stock.validators';
 import { NotFoundException, ConflictException, BadRequestException } from '../../core/exceptions/base';
 import { IConversionRepository } from '../conversion/conversion.interface';
-
 export class StockService {
     constructor(
         private readonly repository: IStockRepository,

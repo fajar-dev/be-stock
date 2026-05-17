@@ -59,6 +59,6 @@ routes.get('/additional/conversion', (c) => additionalController.conversions(c))
 routes.get('/additional/base-conversion', (c) => additionalController.baseConversions(c))
 routes.get('/additional/branch', (c) => additionalController.branches(c))
 
-routes.post('/upload', (c) => uploadController.store(c))
+routes.get('/upload/presigned', (c) => uploadController.presigned(c))
 
 export default routes

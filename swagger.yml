@@ -532,16 +532,19 @@ paths:
           $ref: "#/components/responses/NotFound"
 
   # ─── UPLOAD ──────────────────────────────────────────────────────────────────
-  /upload:
-    post:
+  /upload/presigned:
+    get:
       tags: [Upload]
-      summary: Upload file ke MinIO
+      summary: Dapatkan presigned PUT URL untuk upload langsung ke MinIO
       description: |
-        Upload satu file ke MinIO. Gunakan query param `folder` untuk menentukan direktori penyimpanan.
+        Mengembalikan `uploadUrl` (pre-signed PUT URL) dan `objectName`.
+
+        **Flow penggunaan:**
+        1. Panggil endpoint ini untuk mendapatkan `uploadUrl` dan `objectName`
+        2. Client upload file langsung ke `uploadUrl` menggunakan HTTP `PUT`
+        3. Gunakan `objectName` sebagai nilai field `photo` saat membuat entity
 
         Folder yang diizinkan: `stocks`, `stock-variants`
-
-        `objectName` yang dikembalikan digunakan sebagai nilai field `photo` di endpoint lain.
       parameters:
         - in: query
           name: folder
@@ -550,22 +553,16 @@ paths:
             type: string
             enum: [stocks, stock-variants]
           description: Folder tujuan di MinIO
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required:
-                - file
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: File yang akan diupload
+        - in: query
+          name: ext
+          required: false
+          schema:
+            type: string
+            default: jpg
+          description: Ekstensi file (jpg, png, webp, dll)
       responses:
-        "201":
-          description: File berhasil diupload
+        "200":
+          description: Presigned URL berhasil dibuat
           content:
             application/json:
               schema:
@@ -576,16 +573,21 @@ paths:
                       data:
                         type: object
                         properties:
+                          uploadUrl:
+                            type: string
+                            description: Pre-signed PUT URL. Gunakan HTTP PUT untuk upload file langsung ke sini.
+                            example: "http://localhost:9000/stock-app/stocks/1234567890-123.jpg?X-Amz-Algorithm=..."
                           objectName:
                             type: string
-                            description: Path objek di MinIO
-                            example: stock-variants/1234567890-123.jpg
+                            description: Path objek di MinIO. Simpan ini sebagai nilai photo di endpoint lain.
+                            example: stocks/1234567890-123.jpg
               example:
                 success: true
-                statusCode: 201
-                message: File uploaded successfully
+                statusCode: 200
+                message: Presigned URL generated
                 data:
-                  objectName: stock-variants/1234567890-123.jpg
+                  uploadUrl: "http://localhost:9000/stock-app/stocks/1234567890-123.jpg?X-Amz-Algorithm=..."
+                  objectName: stocks/1234567890-123.jpg
         "400":
           $ref: "#/components/responses/BadRequest"
 
