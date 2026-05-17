@@ -47,10 +47,7 @@ export class StockRepository implements IStockRepository {
     async create(data: CreateStockValidator): Promise<Stock> {
         const { conversionUnit, ...stockData } = data;
         
-        const stock = this.repo.create({
-            ...stockData,
-            photo: stockData.photo as string | null
-        });
+        const stock = this.repo.create({ ...stockData });
         
         if (conversionUnit && conversionUnit.length > 0) {
             stock.stockConversions = conversionUnit.map(id => ({
