@@ -35,8 +35,8 @@ export class StockVariantService {
         const stock = await this.stockRepository.findById(data.stockId);
         if (!stock) throw new BadRequestException(`Stock not found`);
 
-        return this.dataSource.transaction(async (manager) => {
-            const created: StockVariant[] = [];
+        const created = await this.dataSource.transaction(async (manager) => {
+            const result: StockVariant[] = [];
 
             for (const v of data.variant) {
                 const branch = await this.branchRepository.findById(v.branchId);
@@ -54,7 +54,7 @@ export class StockVariantService {
                         stockId: data.stockId,
                         code: v.code,
                         name: v.name,
-                        photo: typeof v.photo === 'string' ? v.photo : null,
+                        photo: v.photo ?? null,
                         description: v.description ?? null,
                     }));
                 }
@@ -65,10 +65,12 @@ export class StockVariantService {
                     quantity: 0,
                 }));
 
-                created.push(variant);
+                result.push(variant);
             }
 
-            return created;
+            return result;
         });
+
+        return created;
     }
 }

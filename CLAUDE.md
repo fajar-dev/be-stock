@@ -31,6 +31,8 @@ src/
 ├── routes/
 │   └── api.ts                    # All route declarations (mounted at /api)
 └── modules/
+    ├── upload/
+    │   └── upload.controller.ts  # GET /upload/presigned — generates pre-signed PUT URL for MinIO
     └── <module>/                 # One folder per domain
         ├── <module>.module.ts    # Factory function — wires DI manually
         ├── <module>.controller.ts
@@ -107,13 +109,13 @@ Only create when the module has domain-specific fixed classifications. Export al
 
 ```ts
 export enum ItemType {
-  PERALATAN = 'Peralatan',
-  SETUP = 'setup',
+  PERALATAN = "Peralatan",
+  SETUP = "setup",
 }
 
 export enum Category {
-  ASET = 'Aset',
-  BIAYA = 'Biaya',
+  ASET = "Aset",
+  BIAYA = "Biaya",
 }
 ```
 
@@ -182,14 +184,16 @@ export class UnitService {
     return this.dataSource.transaction(async (manager) => {
       const unit = await manager.save(manager.create(Unit, validator));
       // auto-create base conversion for every new unit
-      await manager.save(manager.create(Conversion, {
-        name: unit.name,
-        unitBasicId: unit.id,
-        unitConversionId: unit.id,
-        value: 1,
-        isBaseConversion: true,
-        isActive: true,
-      }));
+      await manager.save(
+        manager.create(Conversion, {
+          name: unit.name,
+          unitBasicId: unit.id,
+          unitConversionId: unit.id,
+          value: 1,
+          isBaseConversion: true,
+          isActive: true,
+        }),
+      );
       return unit;
     });
   }
@@ -278,14 +282,9 @@ routes.delete("/stocks/:id", (c) => stockController.destroy(c));
 ```
 
 The `zValidator` second argument determines the data source:
+
 - `'query'` — query string params
 - `'json'` — request body as JSON
-- `'form'` — multipart form data (use for file uploads)
-
-```ts
-// multipart/form-data (e.g. stock creation with image upload)
-routes.post('/stock', zValidator('form', CreateStockSchema, validationHook), (c) => stockController.store(c));
-```
 
 In controllers, access validated data via `c.req.valid()` — bukan `c.req.query()`/`c.req.json()`:
 
@@ -360,16 +359,13 @@ MinIO is used for S3-compatible file storage. It is initialized on app startup a
 
 **Config** (`src/config/minio.ts`): Creates the MinIO client and exports `initializeMinio()` which auto-creates the bucket with public-read policy if it doesn't exist.
 
-**Helper** (`src/core/helpers/minio.ts`): Static `MinioHelper` class — use this in services/controllers.
+**Helper** (`src/core/helpers/minio.ts`): Static `MinioHelper` class — use this in serializers and the upload controller.
 
 ```ts
-// Upload a File from multipart form, returns the object name stored in bucket
-const objectName = await MinioHelper.uploadFromFile(file, 'folder-name');
+// Generate presigned PUT URL for direct client upload
+const uploadUrl = await MinioHelper.getPresignedPutUrl(objectName);
 
-// Get public URL (assumes bucket policy allows public read)
-const url = MinioHelper.getPublicUrl(objectName);
-
-// Generate presigned GET URL (for private buckets)
+// Generate presigned GET URL — used in serializers to serve photos
 const url = await MinioHelper.getPresignedUrl(objectName);
 
 // Delete a file
@@ -388,11 +384,74 @@ await MinioHelper.deleteFile(objectName);
 
 ---
 
+## File Upload Pattern
+
+File upload **tidak dilakukan di dalam entity endpoint**. Gunakan pre-signed PUT URL agar client upload langsung ke MinIO tanpa melewati server.
+
+**Flow:**
+
+```
+1. GET /api/upload/presigned?folder=stocks&ext=jpg
+   ← { uploadUrl: "https://minio/...?X-Amz-...", objectName: "stocks/xyz.jpg" }
+
+2. PUT {uploadUrl}          ← client upload langsung ke MinIO (bypass server)
+   Content-Type: image/jpeg
+   body: <binary>
+
+3. POST /api/stock          ← JSON body, photo sudah berupa string objectName
+   { "photo": "stocks/xyz.jpg", ... }
+```
+
+**Aturan:**
+
+- Field `photo` di validator selalu `z.string().optional().nullable()` — bukan `z.instanceof(File)`
+- Services tidak pernah memanggil MinioHelper untuk upload/move; MinioHelper hanya dipanggil di serializer (untuk generate presigned GET URL saat response)
+- Folder yang diizinkan didefinisikan di `upload.controller.ts` → `ALLOWED_FOLDERS`
+- Untuk menambah folder baru, tambahkan ke array `ALLOWED_FOLDERS`
+
+**Serializer dengan foto** — generate presigned GET URL saat serialisasi:
+
+```ts
+static async single(entity: Entity) {
+    let photoUrl = entity.photo ?? null;
+    if (photoUrl && !photoUrl.startsWith('http')) {
+        photoUrl = await MinioHelper.getPresignedUrl(photoUrl);
+    }
+    return { ...entity, photo: photoUrl };
+}
+
+static async collection(entities: Entity[]) {
+    return Promise.all(entities.map(e => this.single(e)));
+}
+```
+
+Karena `single()` async, controller harus `await` serializer:
+
+```ts
+return ApiResponse.success(
+  c,
+  await EntitySerializer.single(data),
+  "Message",
+  200,
+);
+return ApiResponse.paginate(
+  c,
+  await EntitySerializer.collection(data),
+  total,
+  page,
+  limit,
+  "Message",
+);
+```
+
+---
+
 ## Lightweight Module Pattern
 
 For read-only helper modules (dropdowns, search filters) that query existing entities from other modules — not a full CRUD domain. Skip entity, interface, validators, and serializer.
 
 **Minimal structure**:
+
 ```
 modules/additional/
 ├── additional.controller.ts   # reads raw c.req.query('q')
@@ -406,8 +465,12 @@ Repository uses `DataSource` directly (no interface). Service depends on concret
 Routes have no `zValidator` middleware:
 
 ```ts
-routes.get('/additional/conversion', (c) => additionalController.conversions(c));
-routes.get('/additional/base-conversion', (c) => additionalController.baseConversions(c));
+routes.get("/additional/conversion", (c) =>
+  additionalController.conversions(c),
+);
+routes.get("/additional/base-conversion", (c) =>
+  additionalController.baseConversions(c),
+);
 ```
 
 Use this pattern only when the module is purely a helper with no writes and no owned entities.
